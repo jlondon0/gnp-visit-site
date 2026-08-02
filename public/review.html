@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<!-- GNP-BUILD: review v2.28.0 · 2026-08-01 -->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Revisión - Guayacan</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#15201A;--forest:#1F3B2E;--cream:#FBF6EC;--gold:#E8B23D;--coral:#E2698A;}
+*{box-sizing:border-box;}
+body{margin:0;background:#EFEAE0;color:var(--ink);font-family:'Inter',system-ui,sans-serif;}
+.wrap{max-width:560px;margin:0 auto;padding:28px 18px 60px;}
+.brand{text-align:center;margin-bottom:20px;}
+.brand img{max-width:240px;height:auto;}
+.card{background:#fff;border-radius:18px;padding:24px 22px;box-shadow:0 20px 40px -16px rgba(0,0,0,.18);}
+h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin:0 0 4px;}
+.sub{font-size:.85rem;color:#6B7568;margin-bottom:18px;}
+.row{display:flex;justify-content:space-between;gap:14px;padding:9px 0;border-bottom:1px solid #EFEAE0;font-size:.92rem;}
+.row .k{color:#6B7568;}
+.row .v{font-weight:600;text-align:right;}
+.amount{margin-top:16px;padding:14px;background:#F6F2E8;border-radius:12px;display:flex;justify-content:space-between;align-items:center;}
+.amount .label{font-size:.8rem;color:#6B7568;}
+.amount .val{font-family:'Fraunces';font-size:1.3rem;}
+.section{margin-top:20px;border-top:2px solid var(--gold);padding-top:12px;}
+.section h3{font-family:'Fraunces';font-size:.95rem;font-weight:600;margin:0 0 12px;}
+.field{margin-top:12px;}
+.field label{display:block;font-size:.74rem;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:#6B7568;margin-bottom:6px;}
+.field input, .field textarea{width:100%;border:1.5px solid #DDD6C4;border-radius:10px;padding:11px 12px;font-family:'Inter';font-size:.92rem;}
+.field textarea{min-height:120px;width:100%;resize:vertical;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.row2 .field input{width:100%;}
+@media (max-width:480px){.row2{grid-template-columns:1fr;}}
+.btns{display:flex;gap:10px;margin-top:20px;}
+.btn{flex:1;border:0;border-radius:11px;padding:14px;font-size:.92rem;font-weight:600;cursor:pointer;}
+.btn.approve{background:var(--forest);color:var(--cream);}
+.btn.reject{background:#fff;color:#A3274C;border:1.5px solid #A3274C;}
+.btn:disabled{opacity:.5;cursor:default;}
+.msg{margin-top:14px;font-size:.86rem;padding:10px 12px;border-radius:9px;display:none;}
+.msg.show{display:block;}
+.msg.err{background:#FBE5EA;color:#A3274C;}
+.msg.ok{background:#E6F2EA;color:#1F5C3A;}
+.state{text-align:center;padding:20px 0;display:none;}
+.state.show{display:block;}
+.state .big{font-family:'Fraunces';font-size:1.6rem;margin:12px 0;}
+.state .sub{font-size:.88rem;color:#6B7568;}
+.icons{text-align:center;margin-top:40px;font-size:.78rem;color:rgba(107,117,104,.6);}
+.icons a{color:#1F3B2E;text-decoration:none;margin:0 8px;display:inline-flex;align-items:center;gap:4px;font-size:.85rem;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><img src="logo.png" alt="Guayacan"></div>
+
+  <div class="card" id="loadCard">
+    <p style="color:#6B7568;text-align:center;">Cargando...</p>
+  </div>
+
+  <div class="card" id="detailCard" style="display:none;">
+    <h1 id="resId"></h1>
+    <div class="sub" id="status"></div>
+
+    <div class="row"><div class="k">Nombre</div><div class="v" id="f1"></div></div>
+    <div class="row"><div class="k">Email</div><div class="v" id="f2"></div></div>
+    <div class="row"><div class="k">WhatsApp</div><div class="v" id="f3"></div></div>
+    <div class="row"><div class="k">Fecha</div><div class="v" id="f4"></div></div>
+    <div class="row"><div class="k">Sesión</div><div class="v" id="f5"></div></div>
+    <div class="row"><div class="k">Personas</div><div class="v" id="f6"></div></div>
+    <div class="row"><div class="k">Comidas</div><div class="v" id="f7"></div></div>
+    <div class="row"><div class="k">Especiales</div><div class="v" id="f8"></div></div>
+
+    <div class="amount">
+      <div class="label">Depósito estimado</div>
+      <div class="val" id="amt"></div>
+    </div>
+
+    <div id="capBox" style="display:none;margin-top:12px;padding:12px 14px;border-radius:12px;font-size:.9rem;"></div>
+
+    <div class="section">
+      <h3>Operador</h3>
+      <div class="field">
+        <label id="opLabel">Operador asignado</label>
+        <input type="text" id="opEmail" placeholder="operador@guayacanpreserve.com" required>
+        <select id="opSelect" style="display:none;width:100%;border:1.5px solid #DDD6C4;border-radius:10px;padding:10px 12px;font-family:inherit;font-size:15px;box-sizing:border-box;"></select>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Descuentos (opcional)</h3>
+      <div class="row2">
+        <div class="field">
+          <label>Promo %</label>
+          <input type="number" id="promo" min="0" max="100" step="0.5" placeholder="0">
+        </div>
+        <div class="field">
+          <label>Residente Local %</label>
+          <input type="number" id="local" min="0" max="100" step="0.5" placeholder="0">
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:.8rem;color:#5B6A60;">Total: <span id="total">0%</span></div>
+    </div>
+
+    <div class="section">
+      <h3>Nota (opcional)</h3>
+      <textarea id="note" placeholder="Observaciones..."></textarea>
+    </div>
+
+    <div class="btns">
+      <button class="btn reject" id="rejectBtn" onclick="handleAction('reject')">Rechazar</button>
+      <button class="btn approve" id="approveBtn" onclick="handleAction('approve')">Aprobar</button>
+    </div>
+    <div class="msg" id="msgBox"></div>
+  </div>
+
+  <div class="card state" id="doneCard">
+    <div class="big" id="doneTitle"></div>
+    <div class="sub" id="doneMsg"></div>
+  </div>
+
+  <div class="icons">
+    <a href="https://maps.app.goo.gl/WidM1FDxCbVKXHZ77" target="_blank">Mapas</a>
+    <a href="https://ebird.org/hotspot/L30085815" target="_blank">eBird</a>
+    <a href="https://instagram.com/guayacanpreserve" target="_blank">Instagram</a>
+    <a href="https://facebook.com/guayacanpreserve" target="_blank">Facebook</a>
+  </div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+const token = new URLSearchParams(window.location.search).get('token') || '';
+const ASSIGNED_OP = new URLSearchParams(window.location.search).get('op') || '';
+console.log('[GNP] review build v2.15 · 2026-07-16');
+
+function copFmt(n){ return '$' + Math.round(Number(n)||0).toLocaleString('es-CO') + ' COP'; }
+function usdFmt(n){ return 'US$' + (Number(n)||0).toFixed(2); }
+
+let CAP_OVER = false;      // this reservation would exceed capacity
+let OVERRIDE_OK = false;   // operator chose to approve anyway
+
+// Operator field: locked to the assigned operator if the link carries &op=,
+// otherwise a dropdown of operators (or free text if none configured).
+function setupOperatorField(operators){
+  const input = document.getElementById('opEmail');
+  const select = document.getElementById('opSelect');
+  const label = document.getElementById('opLabel');
+  if (ASSIGNED_OP) {
+    input.style.display = '';
+    input.value = ASSIGNED_OP;
+    input.readOnly = true;
+    input.style.background = '#F1F6F2';
+    select.style.display = 'none';
+    label.textContent = 'Operador asignado';
+    return;
+  }
+  if (operators && operators.length) {
+    input.style.display = 'none';
+    select.style.display = '';
+    select.innerHTML = '<option value="">Selecciona tu nombre...</option>' + operators.map(function(n){ return '<option>' + n + '</option>'; }).join('');
+    label.textContent = 'Selecciona operador';
+  } else {
+    input.style.display = '';
+    select.style.display = 'none';
+    input.readOnly = false;
+    label.textContent = 'Tu nombre o email (auditoría)';
+  }
+}
+function operatorValue(){
+  const select = document.getElementById('opSelect');
+  if (select && select.style.display !== 'none') return select.value.trim();
+  return document.getElementById('opEmail').value.trim();
+}
+
+function renderCapacity(cap){
+  const box = document.getElementById('capBox');
+  if (!cap){ box.style.display = 'none'; CAP_OVER = false; return; }
+  box.style.display = 'block';
+  CAP_OVER = !!cap.over;
+  const remTxt = cap.remaining < 0 ? ('sobrecupo ' + Math.abs(cap.remaining)) : ('quedan ' + cap.remaining);
+  if (cap.over){
+    box.style.background = '#FBE5EA'; box.style.color = '#A3274C';
+    box.innerHTML = '<b>⚠ SOBRECUPO — ' + cap.jornada + '</b><br>' + cap.booked + ' de ' + cap.max + ' cupos ocupados para esta fecha (' + remTxt + ').' +
+      '<label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-weight:600;cursor:pointer;">' +
+      '<input type="checkbox" id="capOverride" onchange="OVERRIDE_OK=this.checked"> Aprobar de todos modos (sobrecupo)</label>';
+  } else {
+    box.style.background = '#F1F6F2'; box.style.color = '#1F5C3A';
+    box.innerHTML = 'Cupo ' + cap.jornada + ': <b>' + cap.booked + ' / ' + cap.max + '</b> ocupados para esta fecha (' + remTxt + ').';
+  }
+}
+
+document.getElementById('promo').addEventListener('input', updateTotal);
+document.getElementById('local').addEventListener('input', updateTotal);
+
+function updateTotal() {
+  const p = Number(document.getElementById('promo').value || 0);
+  const l = Number(document.getElementById('local').value || 0);
+  const t = p + l;
+  document.getElementById('total').textContent = t.toFixed(1) + '%';
+  document.getElementById('total').parentElement.style.color = t > 100 ? '#A3274C' : '#5B6A60';
+}
+
+async function loadReview() {
+  if (!token) {
+    showError('Token faltante.');
+    return;
+  }
+  try {
+    const res = await fetch(API + '?action=review&token=' + encodeURIComponent(token));
+    const json = await res.json();
+    if (!json.ok) {
+      showError(json.error || 'No se pudo cargar.');
+      return;
+    }
+    const d = json.data;
+    document.getElementById('resId').textContent = d.reservationId;
+    document.getElementById('status').textContent = 'Estado: ' + d.estado + ' | Aprobación: ' + d.approvalStatus;
+    document.getElementById('f1').textContent = d.nombre;
+    document.getElementById('f2').textContent = d.email;
+    document.getElementById('f3').textContent = d.whatsapp;
+    document.getElementById('f4').textContent = d.fecha;
+    document.getElementById('f5').textContent = d.jornada;
+    document.getElementById('f6').textContent = d.personas;
+    document.getElementById('f7').textContent = d.servicios;
+    document.getElementById('f8').textContent = d.requerimientos;
+    if (d.depositCop != null) {
+      document.getElementById('amt').textContent = copFmt(d.depositCop) + ' / ' + usdFmt(d.depositUsd);
+    } else {
+      document.getElementById('amt').textContent = d.estimatedAmount.amount + ' ' + d.estimatedAmount.currency;
+    }
+    renderCapacity(d.capacity);
+    setupOperatorField(d.operators || []);
+    
+    document.getElementById('loadCard').style.display = 'none';
+    document.getElementById('detailCard').style.display = 'block';
+  } catch (err) {
+    showError(String(err.message || err));
+  }
+}
+
+function showError(text) {
+  document.getElementById('loadCard').innerHTML = '<p style="color:#A3274C;text-align:center;">' + text + '</p>';
+}
+
+function showMsg(text, type) {
+  const box = document.getElementById('msgBox');
+  box.textContent = text;
+  box.className = 'msg show ' + type;
+}
+
+async function handleAction(act) {
+  const opEmail = operatorValue();
+  if (!opEmail) {
+    showMsg('Requerido: selecciona o indica el operador.', 'err');
+    return;
+  }
+  
+  const p = Number(document.getElementById('promo').value || 0);
+  const l = Number(document.getElementById('local').value || 0);
+  if (p + l > 100) {
+    showMsg('Descuento no puede exceder 100%.', 'err');
+    return;
+  }
+
+  // Over-capacity guardrail: require the operator to tick "Aprobar de todos modos".
+  if (act === 'approve' && CAP_OVER && !OVERRIDE_OK) {
+    showMsg('Esta jornada está en sobrecupo. Marca "Aprobar de todos modos" para continuar.', 'err');
+    return;
+  }
+
+  disableButtons(true);
+  try {
+    const res = await fetch(API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        action: act,
+        token: token,
+        approverEmail: opEmail,
+        note: document.getElementById('note').value.trim(),
+        promo_pct: p,
+        local_resident_pct: l,
+        overrideCapacity: (CAP_OVER && OVERRIDE_OK)
+      })
+    });
+    const json = await res.json();
+    if (!json.ok) {
+      showMsg(json.message || json.error || 'Error', 'err');
+      disableButtons(false);
+      return;
+    }
+    showDone(act === 'approve' ? 'Aprobado' : 'Rechazado', json.message);
+  } catch (err) {
+    showMsg(String(err), 'err');
+    disableButtons(false);
+  }
+}
+
+function disableButtons(d) {
+  document.getElementById('approveBtn').disabled = d;
+  document.getElementById('rejectBtn').disabled = d;
+}
+
+function showDone(title, msg) {
+  document.getElementById('detailCard').style.display = 'none';
+  document.getElementById('doneCard').classList.add('show');
+  document.getElementById('doneTitle').textContent = title;
+  document.getElementById('doneMsg').textContent = msg;
+}
+
+loadReview();
+</script>
+</body>
+</html>
