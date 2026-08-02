@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!-- GNP-BUILD: calendar v2.15 · 2026-07-16 -->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guayacan Preserve — Disponibilidad</title>
+<meta name="description" content="Calendario de disponibilidad para tu visita de avistamiento de aves en Guayacan Natural Preserve.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15201A; --forest:#1F3B2E; --forest-deep:#142A20; --cream:#FBF6EC;
+  --gold:#E8B23D; --coral:#E2698A; --lilac:#9C8FC9; --line:rgba(251,246,236,.16);
+  --ok:#5FAE7A; --warn:#E2698A; --limited:#C98A2E;
+  font-size:16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--forest);color:var(--cream);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom);}
+h1,h2,h3,.serif{font-family:'Fraunces',serif;}
+a{color:inherit;}
+.wrap{max-width:640px;margin:0 auto;padding:0 20px 60px;}
+
+.hero{position:relative;padding:36px 20px 22px;background:radial-gradient(120% 140% at 20% -10%, #2A4F3D 0%, var(--forest) 55%, var(--forest-deep) 100%);}
+.hero::after{content:'';position:absolute;inset:auto 0 0 0;height:1px;background:var(--line);}
+.brand{text-align:center;max-width:640px;margin:0 auto;}
+.brand img{width:140px;height:auto;display:block;margin:0 auto 14px;}
+.lang-toggle{position:absolute;top:20px;right:20px;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
+.lang-toggle button{background:none;border:0;color:var(--cream);opacity:.55;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;padding:7px 14px;cursor:pointer;transition:opacity .15s,background .15s;}
+.lang-toggle button.active{opacity:1;background:rgba(251,246,236,.1);}
+.back-link{position:absolute;top:24px;left:20px;font-size:.78rem;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:4px;}
+.hero-copy{max-width:640px;margin:10px auto 0;text-align:center;}
+.eyebrow{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;}
+.hero h1{font-size:1.7rem;line-height:1.15;margin:8px 0 8px;font-weight:500;}
+.hero p{font-size:.92rem;line-height:1.5;color:rgba(251,246,236,.78);max-width:46ch;margin:0 auto;}
+
+.card{background:var(--cream);color:var(--ink);border-radius:22px;margin-top:-14px;position:relative;padding:22px 18px 24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);}
+
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.cal-nav button{width:36px;height:36px;border-radius:50%;border:1.5px solid #DDD6C4;background:#fff;font-size:1rem;cursor:pointer;color:var(--ink);}
+.cal-nav button:disabled{opacity:.35;cursor:default;}
+.cal-title{font-family:'Fraunces';font-size:1.15rem;text-transform:capitalize;}
+
+.weekdays{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px;}
+.weekdays div{text-align:center;font-size:.68rem;font-weight:600;letter-spacing:.03em;text-transform:uppercase;color:#8A8270;}
+
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.day{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.82rem;font-weight:600;position:relative;background:#F6F2E8;color:#B9B2A0;}
+.day.pad{background:transparent;}
+.day.open{background:#E6F2EA;color:#1F5C3A;cursor:pointer;}
+.day.limited{background:#FCEFDA;color:#8A5A16;cursor:pointer;}
+.day.full{background:#FBE5EA;color:#A3274C;}
+.day.disabled{background:#F6F2E8;color:#C9C2AE;cursor:default;}
+.day.today::after{content:'';position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.6;}
+.day:active.open, .day:active.limited{transform:scale(.94);}
+
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:18px;font-size:.76rem;color:#5B6A60;}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block;}
+.legend .i-open{background:#5FAE7A;}
+.legend .i-limited{background:var(--limited);}
+.legend .i-full{background:var(--warn);}
+
+.hint{font-size:.8rem;color:#5B6A60;margin-top:14px;line-height:1.5;}
+.loading{text-align:center;padding:30px 0;color:#8A8270;font-size:.85rem;}
+
+.foot{text-align:center;margin-top:30px;font-size:.78rem;color:rgba(251,246,236,.6);}
+.foot a{text-decoration:underline;color:var(--gold);}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <a class="back-link" href="index.html" id="t-back">&larr; Reservar</a>
+  <div class="lang-toggle" role="group" aria-label="Language">
+    <button id="langEs" class="active" onclick="setLang('ES')">ES</button>
+    <button id="langEn" onclick="setLang('EN')">EN</button>
+  </div>
+  <div class="brand">
+    <img src="logo.png" alt="Guayacan Natural Preserve">
+  </div>
+  <div class="hero-copy">
+    <div class="eyebrow" id="t-eyebrow">Disponibilidad</div>
+    <h1 id="t-h1">¿Cuándo hay cupo?</h1>
+    <p id="t-sub">Elige un día disponible para ir directo a la solicitud de reserva.</p>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div class="cal-nav">
+      <button id="prevBtn" onclick="changeMonth(-1)">&#8249;</button>
+      <div class="cal-title" id="calTitle"></div>
+      <button id="nextBtn" onclick="changeMonth(1)">&#8250;</button>
+    </div>
+    <div class="weekdays" id="weekdays"></div>
+    <div id="calBody"><div class="loading" id="t-loading">Cargando disponibilidad...</div></div>
+    <div class="legend">
+      <span><i class="i-open"></i><span id="t-legOpen">Disponible</span></span>
+      <span><i class="i-limited"></i><span id="t-legLimited">Últimos cupos</span></span>
+      <span><i class="i-full"></i><span id="t-legFull">Agotado</span></span>
+    </div>
+    <div class="hint" id="dateHint"></div>
+  </div>
+
+  <div class="foot">
+    <span id="t-foot">¿Preguntas?</span>
+    <a href="https://instagram.com/guayacanpreserve" target="_blank">@guayacanpreserve</a>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+// Same Apps Script Web App URL used by index.html.
+const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+const CAL_BUILD = 'v2.15 · 2026-07-16';
+// Friendly session labels for the remaining-spots tooltip; falls back to the raw key.
+const CONFIG_LABELS = {
+  AMANECER: { ES: 'Amanecer', EN: 'Dawn' },
+  TARDE:    { ES: 'Tarde',    EN: 'Afternoon' }
+};
+
+let LANG = 'ES';
+let viewYear, viewMonth; // viewMonth 0-indexed
+const today = new Date();
+today.setHours(0,0,0,0);
+const cache = {};
+
+const I18N = {
+  ES: {
+    back: '← Reservar', eyebrow: 'Disponibilidad', h1: '¿Cuándo hay cupo?',
+    sub: 'Elige un día disponible para ir directo a la solicitud de reserva.',
+    legOpen: 'Disponible', legLimited: 'Últimos cupos', legFull: 'Agotado',
+    foot: '¿Preguntas?', loading: 'Cargando disponibilidad...',
+    minDays: 'Requiere mínimo {n} días de antelación. Los días grises no están disponibles para reservar en línea.',
+    weekdays: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
+    months: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
+  },
+  EN: {
+    back: '← Book', eyebrow: 'Availability', h1: 'When are there spots?',
+    sub: 'Pick an open day to jump straight to the reservation request.',
+    legOpen: 'Available', legLimited: 'Almost full', legFull: 'Fully booked',
+    foot: 'Questions?', loading: 'Loading availability...',
+    minDays: 'Requires at least {n} days advance notice. Gray days cannot be booked online.',
+    weekdays: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
+    months: ['January','February','March','April','May','June','July','August','September','October','November','December']
+  }
+};
+
+function setLang(L){
+  LANG = L;
+  document.getElementById('langEs').classList.toggle('active', L==='ES');
+  document.getElementById('langEn').classList.toggle('active', L==='EN');
+  const t = I18N[L];
+  document.getElementById('t-back').textContent = t.back;
+  document.getElementById('t-eyebrow').textContent = t.eyebrow;
+  document.getElementById('t-h1').textContent = t.h1;
+  document.getElementById('t-sub').textContent = t.sub;
+  document.getElementById('t-legOpen').textContent = t.legOpen;
+  document.getElementById('t-legLimited').textContent = t.legLimited;
+  document.getElementById('t-legFull').textContent = t.legFull;
+  document.getElementById('t-foot').textContent = t.foot;
+  renderWeekdays();
+  renderMonth();
+}
+
+function renderWeekdays(){
+  const box = document.getElementById('weekdays');
+  box.innerHTML = I18N[LANG].weekdays.map(d => '<div>'+d+'</div>').join('');
+}
+
+function changeMonth(delta){
+  viewMonth += delta;
+  if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+  if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+  renderMonth();
+}
+
+async function fetchMonth(year, month){
+  const key = year + '-' + String(month+1).padStart(2,'0');
+  if (cache[key]) return cache[key];
+  const res = await fetch(API_BASE + '?action=calendar&month=' + key);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'calendar error');
+  cache[key] = json.data;
+  return json.data;
+}
+
+function dateStr(y,m,d){ return y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0'); }
+
+async function renderMonth(){
+  const t = I18N[LANG];
+  document.getElementById('calTitle').textContent = t.months[viewMonth] + ' ' + viewYear;
+  document.getElementById('calBody').innerHTML = '<div class="loading">'+t.loading+'</div>';
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
+  const isCurrentMonth = (viewYear === today.getFullYear() && viewMonth === today.getMonth());
+  document.getElementById('prevBtn').disabled = isCurrentMonth;
+
+  let data;
+  try { data = await fetchMonth(viewYear, viewMonth); }
+  catch(err){ document.getElementById('calBody').innerHTML = '<div class="loading">'+String(err.message||err)+'</div>'; return; }
+
+  const minAdvance = data.minDaysAdvance != null ? data.minDaysAdvance : 7;
+  const minDate = new Date(today); minDate.setDate(minDate.getDate() + Number(minAdvance || 0));
+
+  const startWeekday = firstOfMonth.getDay(); // 0=Sun
+  const daysInMonth = new Date(viewYear, viewMonth+1, 0).getDate();
+
+  let html = '';
+  for (let i=0;i<startWeekday;i++) html += '<div class="day pad"></div>';
+  for (let d=1; d<=daysInMonth; d++){
+    const ds = dateStr(viewYear, viewMonth, d);
+    const cellDate = new Date(viewYear, viewMonth, d);
+    const info = data.days ? data.days[ds] : null;
+    const isTooSoon = cellDate < minDate;
+    const isPast = cellDate < today;
+    let cls = 'day';
+    if (isPast || isTooSoon || !info) cls += ' disabled';
+    else cls += ' ' + info.status;
+    if (cellDate.getTime() === today.getTime()) cls += ' today';
+    const clickable = !isPast && !isTooSoon && info && info.status !== 'full';
+    let title = '';
+    if (info && info.remaining && (info.status === 'open' || info.status === 'limited')) {
+      const parts = Object.keys(info.remaining).map(k => {
+        const lbl = (CONFIG_LABELS[k] && CONFIG_LABELS[k][LANG]) || k;
+        return lbl + ': ' + info.remaining[k];
+      });
+      title = parts.join(' · ');
+    }
+    html += '<div class="'+cls+'"'+(title ? ' title="'+title+'"' : '')+(clickable ? ' onclick="goBook(\''+ds+'\')"' : '')+'>'+d+'</div>';
+  }
+  document.getElementById('calBody').innerHTML = '<div class="grid">' + html + '</div>';
+  document.getElementById('dateHint').textContent = t.minDays.replace('{n}', minAdvance);
+
+  // Warm the cache for the neighbouring months so navigation feels instant.
+  prefetchNeighbors();
+}
+
+function prefetchNeighbors(){
+  const around = [
+    { y: viewYear, m: viewMonth + 1 },
+    { y: viewYear, m: viewMonth - 1 }
+  ];
+  around.forEach(o => {
+    let y = o.y, mo = o.m;
+    if (mo < 0) { mo = 11; y--; }
+    if (mo > 11) { mo = 0; y++; }
+    // Don't prefetch months entirely in the past.
+    if (y < today.getFullYear() || (y === today.getFullYear() && mo < today.getMonth())) return;
+    fetchMonth(y, mo).catch(function(){});
+  });
+}
+
+function goBook(ds){
+  window.location.href = 'index.html?date=' + ds;
+}
+
+(async function init(){
+  console.log('[GNP] calendar build ' + CAL_BUILD);
+  viewYear = today.getFullYear();
+  viewMonth = today.getMonth();
+  renderWeekdays();
+  renderMonth(); // calendar payload carries minDaysAdvance — no separate config round-trip needed
+})();
+</script>
+</body>
+</html>
