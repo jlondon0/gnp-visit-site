@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<!-- GNP-BUILD: index v2.15 · 2026-07-16 -->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Guayacan Preserve — Reservas</title>
+<meta name="description" content="Reserva tu visita de avistamiento de aves en Guayacan Natural Preserve.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15201A; --forest:#1F3B2E; --forest-deep:#142A20; --cream:#FBF6EC;
+  --gold:#E8B23D; --coral:#E2698A; --lilac:#9C8FC9; --line:rgba(251,246,236,.16);
+  --ok:#5FAE7A; --warn:#E2698A;
+  font-size:16px;
+}
+*{box-sizing:border-box;}
+body{margin:0;background:var(--forest);color:var(--cream);font-family:'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:env(safe-area-inset-bottom);}
+h1,h2,h3,.serif{font-family:'Fraunces',serif;}
+a{color:inherit;}
+.wrap{max-width:640px;margin:0 auto;padding:0 20px 60px;}
+
+/* ---------- HERO ---------- */
+.hero{position:relative;padding:48px 20px 26px;background:radial-gradient(120% 140% at 20% -10%, #2A4F3D 0%, var(--forest) 55%, var(--forest-deep) 100%);}
+.hero::after{content:'';position:absolute;inset:auto 0 0 0;height:1px;background:var(--line);}
+.brand{text-align:center;max-width:640px;margin:0 auto;}
+.brand img{max-width:100%;height:auto;width:320px;display:block;margin:0 auto 16px;}
+.brand .word{font-size:1.05rem;letter-spacing:.02em;display:none;}
+.brand .word b{font-weight:600;}
+.hero-copy{max-width:640px;margin:34px auto 0;}
+.eyebrow{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;}
+.hero h1{font-size:2.3rem;line-height:1.08;margin:10px 0 12px;font-weight:500;}
+.hero p{font-size:1rem;line-height:1.55;color:rgba(251,246,236,.78);max-width:46ch;}
+
+/* flight-path signature: dawn-to-dusk arc linking the two sessions */
+.arc{margin-top:18px;max-width:640px;margin-left:auto;margin-right:auto;}
+.arc svg{width:100%;height:auto;display:block;}
+
+.lang-toggle{position:absolute;top:24px;right:20px;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
+.lang-toggle button{background:none;border:0;color:var(--cream);opacity:.55;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;padding:7px 14px;cursor:pointer;transition:opacity .15s,background .15s;}
+.lang-toggle button.active{opacity:1;background:rgba(251,246,236,.1);}
+
+/* ---------- FORM CARD ---------- */
+.card{background:var(--cream);color:var(--ink);border-radius:22px;margin-top:-20px;position:relative;padding:30px 24px 28px;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);}
+.card h2{font-size:1.3rem;font-weight:500;margin:0 0 4px;}
+.card .sub{font-size:.86rem;color:#5B6A60;margin-bottom:22px;}
+
+.field{margin-bottom:18px;}
+.field label{display:block;font-size:.74rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#5B6A60;margin-bottom:7px;}
+.field input, .field textarea, .field select{
+  width:100%;max-width:100%;border:1.5px solid #DDD6C4;background:#fff;border-radius:11px;padding:0 13px;
+  font-family:'Inter';font-size:16px;color:var(--ink);transition:border-color .15s;
+  height:48px;box-sizing:border-box;
+}
+.field input:focus, .field textarea:focus, .field select:focus{outline:none;border-color:var(--forest);}
+.field textarea{min-height:78px;height:auto;padding:12px 13px;resize:vertical;}
+.field input[type=date]{height:48px;line-height:46px;padding:0 13px;-webkit-appearance:none;appearance:none;max-width:220px;}
+@media (max-width:480px){.field input[type=date]{max-width:100%;}}
+select{-webkit-appearance:none;appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%235B6A60'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;}
+.hint{font-size:.76rem;color:#8A8270;margin-top:6px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+@media (max-width:640px){.row2{grid-template-columns:1fr;}}
+
+/* plan + sub-option cards (reuse jcard system) */
+.jornadas{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px;}
+@media (max-width:640px){.jornadas{grid-template-columns:1fr;}}
+.jcard{border:1.5px solid #DDD6C4;border-radius:14px;padding:14px;cursor:pointer;background:#fff;position:relative;transition:border-color .15s,box-shadow .15s;}
+.jcard:active{transform:scale(.98);}
+.jcard.selected{border-color:var(--forest);box-shadow:0 0 0 3px rgba(31,59,46,.1);}
+.jcard .jname{font-family:'Fraunces';font-size:1.05rem;}
+.jcard .jprice{font-size:.82rem;color:var(--forest);font-weight:600;margin-top:3px;}
+.jcard .jwin{font-size:.78rem;color:#5B6A60;margin-top:2px;}
+.jcard .jcap{font-size:.74rem;margin-top:8px;font-weight:600;}
+.jcap.ok{color:var(--ok);}
+.jcap.low{color:#C98A2E;}
+.jcap.full{color:var(--warn);}
+
+/* inclusions / exclusions panel */
+.inclbox{border:1px solid #E3DCC8;border-radius:14px;padding:14px 16px;background:#FCF9F1;margin-bottom:4px;}
+.inclbox h4{margin:0 0 6px;font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:#5B6A60;font-weight:700;}
+.inclbox ul{list-style:none;margin:0 0 12px;padding:0;}
+.inclbox li{font-size:.86rem;line-height:1.5;padding-left:20px;position:relative;color:var(--ink);}
+.inclbox li.inc::before{content:'✓';position:absolute;left:0;color:var(--ok);font-weight:700;}
+.inclbox li.exc{color:#8A8270;}
+.inclbox li.exc::before{content:'×';position:absolute;left:0;color:#B9522E;font-weight:700;}
+.inclbox .exc-wrap{margin-top:4px;}
+
+/* nationality segmented */
+.seg{display:flex;gap:10px;}
+.seg .segbtn{flex:1;border:1.5px solid #DDD6C4;border-radius:11px;background:#fff;padding:13px;font-family:'Inter';font-size:.9rem;font-weight:600;color:var(--ink);cursor:pointer;transition:background .15s,border-color .15s,color .15s;}
+.seg .segbtn.selected{background:var(--forest);color:var(--cream);border-color:var(--forest);}
+
+/* guest / almuerzo stepper */
+.stepper{display:flex;align-items:center;gap:14px;}
+.stepper button{width:38px;height:38px;border-radius:50%;border:1.5px solid #DDD6C4;background:#fff;font-size:1.1rem;cursor:pointer;color:var(--ink);transition:border-color .15s,background .15s;}
+.stepper button:active{background:#F6F2E8;}
+.stepper .n{font-family:'Fraunces';font-size:1.3rem;min-width:24px;text-align:center;}
+
+/* live receipt */
+.receipt{border:1px solid #E3DCC8;border-radius:16px;background:#fff;padding:18px 18px 16px;margin-bottom:6px;}
+.receipt .rhead{font-size:.72rem;letter-spacing:.05em;text-transform:uppercase;color:#5B6A60;font-weight:700;margin-bottom:12px;}
+.rline{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;font-size:.9rem;}
+.rline .rlabel{color:var(--ink);}
+.rline .rlabel small{display:block;color:#8A8270;font-size:.74rem;font-weight:400;}
+.rline .ramt{text-align:right;white-space:nowrap;}
+.rline .ramt .cop{font-weight:600;color:var(--ink);}
+.rline .ramt .usd{display:block;font-size:.74rem;color:#8A8270;}
+.rsep{border:0;border-top:1px solid #EDE7D6;margin:8px 0;}
+.rline.subtotal .cop{font-weight:600;}
+.rline.tax .rlabel{color:#B9522E;}
+.rline.total{font-size:1rem;}
+.rline.total .rlabel{font-family:'Fraunces';}
+.rline.total .cop{font-weight:700;font-size:1.05rem;}
+.rline.deposit{background:#F3F8F4;margin:8px -18px -16px;padding:12px 18px;border-top:1px solid #E3DCC8;border-radius:0 0 16px 16px;}
+.rline.deposit .rlabel{font-weight:600;color:var(--forest);}
+.rline.deposit .cop{font-weight:700;color:var(--forest);}
+.rnote{font-size:.72rem;color:#8A8270;margin-top:10px;line-height:1.4;}
+.rpending{font-size:.84rem;color:#8A8270;text-align:center;padding:8px 0;}
+
+.checks{display:flex;gap:10px;flex-wrap:wrap;}
+.chk{border:1.5px solid #DDD6C4;border-radius:999px;padding:9px 16px;font-size:.86rem;cursor:pointer;background:#fff;transition:background .15s,border-color .15s,color .15s;}
+.chk.selected{background:var(--forest);color:var(--cream);border-color:var(--forest);}
+
+.submit{width:100%;background:var(--forest);color:var(--cream);border:0;border-radius:13px;padding:15px;font-size:.95rem;font-weight:600;letter-spacing:.02em;cursor:pointer;margin-top:8px;transition:background .15s,transform .1s;}
+.submit:active{transform:scale(.985);}
+.submit:disabled{opacity:.5;cursor:default;}
+.msg{font-size:.86rem;border-radius:10px;padding:11px 13px;margin-top:14px;display:none;}
+.msg.show{display:block;}
+.msg.err{background:#FBE5EA;color:#A3274C;}
+.msg.ok{background:#E6F2EA;color:#1F5C3A;}
+
+.field input.waiver-checkbox{
+  -webkit-appearance:none;appearance:none;
+  width:20px;height:20px;min-width:20px;max-width:20px;
+  border:1.5px solid #C9C0A8;border-radius:5px;
+  background:#fff;cursor:pointer;flex-shrink:0;flex-grow:0;margin-top:1px;padding:0;
+  position:relative;transition:background .15s,border-color .15s;
+}
+.field input.waiver-checkbox:checked{background:var(--forest);border-color:var(--forest);}
+.field input.waiver-checkbox:checked::after{
+  content:'';position:absolute;left:6px;top:2px;width:5px;height:10px;
+  border:solid var(--cream);border-width:0 2px 2px 0;transform:rotate(45deg);
+}
+
+/* success */
+.success{display:none;text-align:center;padding:10px 4px;}
+.success.show{display:block;}
+.success .rid{font-family:'Fraunces';font-size:1.6rem;margin:10px 0 4px;}
+.success p{font-size:.9rem;color:#5B6A60;line-height:1.5;}
+
+.foot{text-align:center;margin-top:30px;font-size:.78rem;color:rgba(251,246,236,.5);}
+.foot a{text-decoration:underline;}
+
+.field-invalid input, .field-invalid textarea, input.field-invalid, textarea.field-invalid{
+  border-color:#C0392B !important;
+  box-shadow:0 0 0 3px rgba(192,57,43,.15) !important;
+}
+.group-invalid{border-radius:14px;box-shadow:0 0 0 3px rgba(192,57,43,.18);}
+.hideit{display:none;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="lang-toggle" role="group" aria-label="Language">
+    <button id="langEs" class="active" onclick="setLang('ES')">ES</button>
+    <button id="langEn" onclick="setLang('EN')">EN</button>
+  </div>
+  <div class="brand">
+    <img src="data:image/png;base64,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" alt="Guayacan Natural Preserve">
+    <div class="word"><b>Guayacan</b> Natural Preserve</div>
+  </div>
+  <div class="hero-copy">
+    <div class="eyebrow" id="t-eyebrow">Avistamiento de aves · Colombia</div>
+    <h1 id="t-h1">Elige tu experiencia en la reserva.</h1>
+    <p id="t-sub">Escoge tu plan, cuéntanos cuántos son, y verás el desglose completo antes de confirmar.</p>
+  </div>
+  <div class="arc">
+    <svg viewBox="0 0 600 60" preserveAspectRatio="none">
+      <path d="M10,50 C150,5 450,5 590,50" fill="none" stroke="rgba(251,246,236,.22)" stroke-width="1.5" stroke-dasharray="2 7"/>
+      <circle cx="10" cy="50" r="4" fill="#E8B23D"/>
+      <circle cx="590" cy="50" r="4" fill="#E2698A"/>
+    </svg>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="card">
+    <div id="formView">
+      <h2 id="t-formTitle">Solicitud de reserva</h2>
+      <div class="sub" id="t-formSub">Te confirmaremos disponibilidad y pago por correo.</div>
+
+      <form id="resForm" onsubmit="return false;">
+        <div class="field">
+          <label id="t-lblName">Nombre y apellidos</label>
+          <input type="text" id="f_nombre" required autocomplete="name">
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label id="t-lblEmail">Email</label>
+            <input type="email" id="f_email" required autocomplete="email">
+          </div>
+          <div class="field">
+            <label id="t-lblWa">WhatsApp</label>
+            <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+              <select id="f_waCountry" style="flex:0 0 90px;border:1.5px solid #DDD6C4;background:#fff;border-radius:11px;padding:12px 8px;font-family:'Inter';font-size:16px;color:var(--ink);font-weight:500;height:48px;box-sizing:border-box;-webkit-appearance:none;appearance:none;" required>
+                <option value="+57" selected>🇨🇴 +57</option>
+                <option value="+1">🇺🇸 +1</option>
+                <option value="+34">🇪🇸 +34</option>
+                <option value="+55">🇧🇷 +55</option>
+                <option value="+56">🇨🇱 +56</option>
+                <option value="+51">🇵🇪 +51</option>
+                <option value="+593">🇪🇨 +593</option>
+                <option value="+591">🇧🇴 +591</option>
+              </select>
+              <input type="tel" id="f_waNumber" placeholder="3001234567" autocomplete="tel-national" style="flex:1;border:1.5px solid #DDD6C4;background:#fff;border-radius:11px;padding:12px 13px;font-family:'Inter';font-size:16px;color:var(--ink);height:48px;box-sizing:border-box;" required>
+            </div>
+            <div class="hint" id="t-waHint">Número sin el código de país.</div>
+          </div>
+        </div>
+
+        <div class="field" style="margin-top:18px;">
+          <label id="t-lblDate">Fecha de visita</label>
+          <input type="date" id="f_fecha" required onchange="onDateChange()">
+          <div class="hint" id="dateHint"></div>
+          <div class="hint"><a href="calendar.html" id="t-calLink" style="color:var(--forest);font-weight:600;text-decoration:underline;">Ver calendario de disponibilidad</a></div>
+        </div>
+
+        <div class="field">
+          <label id="t-lblPlan">Plan</label>
+          <div class="jornadas" id="planList"></div>
+        </div>
+
+        <div class="field hideit" id="subOptionField">
+          <label id="t-lblSubOption">Jornada</label>
+          <div class="jornadas" id="subOptionList"></div>
+        </div>
+
+        <div class="field hideit" id="arrivalField">
+          <label id="t-lblArrival">Hora de llegada</label>
+          <input type="text" id="f_arrival" placeholder="Ej: 5:30 AM">
+          <div class="hint" id="t-arrivalHint">La hora ideal varía según el clima y la migración (mayo y octubre). Indícanos tu preferencia y la ajustamos contigo.</div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label id="t-lblGuests">Personas</label>
+            <div class="stepper">
+              <button type="button" onclick="stepGuests(-1)">−</button>
+              <div class="n" id="guestN">2</div>
+              <button type="button" onclick="stepGuests(1)">+</button>
+            </div>
+          </div>
+          <div class="field hideit" id="almuerzoField">
+            <label id="t-lblAlmuerzo">Almuerzo (adicional)</label>
+            <div class="stepper">
+              <button type="button" onclick="stepAlmuerzo(-1)">−</button>
+              <div class="n" id="almuerzoN">0</div>
+              <button type="button" onclick="stepAlmuerzo(1)">+</button>
+            </div>
+            <div class="hint" id="almuerzoHint"></div>
+          </div>
+        </div>
+
+        <div class="field">
+          <label id="t-lblNationality">¿Eres colombiano o residente en Colombia?</label>
+          <div class="seg" id="natGroup">
+            <button type="button" class="segbtn" id="natYes" onclick="setNationality(true)">Sí</button>
+            <button type="button" class="segbtn" id="natNo" onclick="setNationality(false)">No</button>
+          </div>
+          <div class="hint" id="t-natHint">Los visitantes extranjeros tienen un impuesto adicional, que verás detallado abajo.</div>
+        </div>
+
+        <div class="field hideit" id="extraServicesField">
+          <label id="t-lblServices">Servicios adicionales</label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;text-transform:none;font-size:.9rem;font-weight:400;color:var(--ink);margin-bottom:8px;">
+            <input type="checkbox" id="f_serviceGuide" class="waiver-checkbox" onchange="renderReceipt();renderInclusions();">
+            <span id="svcGuideLabel">Guía bilingüe</span>
+          </label>
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;text-transform:none;font-size:.9rem;font-weight:400;color:var(--ink);">
+            <input type="checkbox" id="f_serviceTransport" class="waiver-checkbox" onchange="renderReceipt();renderInclusions();">
+            <span id="svcTransportLabel">Transporte</span>
+          </label>
+        </div>
+
+        <div class="field hideit" id="insuranceNote" style="background:#F1F6F2;border-radius:12px;padding:12px 14px;">
+          <span id="insuranceText" style="font-size:.86rem;color:var(--ink);"></span>
+        </div>
+
+        <div class="field">
+          <label id="t-lblMinors">¿Viajan menores de 18 años?</label>
+          <div class="seg" id="minorsGroup">
+            <button type="button" class="segbtn" id="minorsYes" onclick="setMinors(true)">Sí</button>
+            <button type="button" class="segbtn" id="minorsNo" onclick="setMinors(false)">No</button>
+          </div>
+          <div class="field hideit" id="minorWithField" style="margin-top:10px;">
+            <div class="hint" id="minorsNotice" style="margin-bottom:8px;"></div>
+            <input type="text" id="f_minorWith" placeholder="¿Con quién asiste el menor? (adulto responsable)">
+          </div>
+        </div>
+
+        <div class="inclbox hideit" id="inclBox">
+          <h4 id="t-inclHead">Incluye</h4>
+          <ul id="inclList"></ul>
+          <div class="exc-wrap" id="excWrap">
+            <h4 id="t-excHead">No incluye</h4>
+            <ul id="excList"></ul>
+          </div>
+        </div>
+
+        <div class="field">
+          <label id="t-lblReq">Requerimientos especiales</label>
+          <textarea id="f_req" placeholder=""></textarea>
+        </div>
+
+        <div class="field">
+          <label id="t-lblReceipt">Resumen y desglose</label>
+          <div class="receipt" id="receiptBox">
+            <div class="rpending" id="receiptPending">Selecciona un plan para ver el desglose.</div>
+            <div id="receiptContent" class="hideit"></div>
+          </div>
+        </div>
+
+        <div class="field" id="ackField" style="background:#F1F6F2;border-radius:12px;padding:14px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;text-transform:none;font-size:.84rem;font-weight:400;color:var(--ink);">
+            <input type="checkbox" id="f_ack" class="waiver-checkbox">
+            <span id="t-ackText">He leído y aprobado los servicios y el desglose de costo mostrado arriba.</span>
+          </label>
+          <div class="hint" id="t-ackHint">Al aprobar, enviaremos una copia de los servicios y el desglose a tu correo y WhatsApp.</div>
+        </div>
+
+        <div class="field" id="waiverField" style="background:#F6F2E8;border-radius:12px;padding:14px;">
+          <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;text-transform:none;font-size:.84rem;font-weight:400;color:var(--ink);">
+            <input type="checkbox" id="f_waiver" class="waiver-checkbox">
+            <span id="t-waiverText">Entiendo que el avistamiento de aves implica caminar por senderos naturales y acepto los riesgos asociados. Eximo a Guayacan Preserve de responsabilidad por lesiones derivadas de mi participación.</span>
+          </label>
+          <input type="text" id="f_waiverName" placeholder="" autocomplete="name" style="margin-top:10px;">
+          <div class="hint" id="t-waiverHint">Escribe tu nombre completo como firma.</div>
+        </div>
+
+        <button class="submit" id="submitBtn" onclick="submitReservation()">
+          <span id="t-submit">Enviar solicitud</span>
+        </button>
+        <div class="msg" id="msgBox"></div>
+      </form>
+    </div>
+
+    <div class="success" id="successView">
+      <svg width="52" height="52" viewBox="0 0 52 52" style="margin:0 auto 14px;display:block;">
+        <circle cx="26" cy="26" r="25" fill="none" stroke="#1F5C3A" stroke-width="2"/>
+        <path d="M15 27l7 7 15-15" fill="none" stroke="#1F5C3A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <div class="eyebrow" id="t-okEyebrow" style="color:#1F5C3A;">Solicitud recibida</div>
+      <div class="rid" id="successRid">26-000000</div>
+      <p id="t-okBody">Te enviamos una copia de tu reserva y el desglose por correo y WhatsApp. Revisaremos disponibilidad y te compartiremos las instrucciones de pago.</p>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-top:40px;font-size:.78rem;color:rgba(251,246,236,.6);line-height:1.6;">
+    <a href="https://maps.app.goo.gl/WidM1FDxCbVKXHZ77" target="_blank" style="color:var(--gold);text-decoration:none;margin:0 10px;display:inline-flex;align-items:center;gap:4px;font-size:.85rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2C7 2 3 6 3 12c0 4.5 3 8 9 10 6-2 9-5.5 9-10 0-6-4-10-9-10z"></path><circle cx="12" cy="12" r="2"></circle></svg>Maps</a>
+    <a href="https://ebird.org/hotspot/L30085815" target="_blank" style="color:var(--gold);text-decoration:none;margin:0 10px;display:inline-flex;align-items:center;gap:4px;font-size:.85rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2c2.5 0 5 1 7 3l-2.5 2C15 5.5 13.5 5 12 5s-3 .5-4.5 2L5 5c2-2 4.5-3 7-3zM8 8c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2zm8 0c1 0 2 1 2 2s-1 2-2 2-2-1-2-2 1-2 2-2z"></path></svg>eBird</a>
+    <a href="https://instagram.com/guayacanpreserve" target="_blank" style="color:var(--gold);text-decoration:none;margin:0 10px;display:inline-flex;align-items:center;gap:4px;font-size:.85rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="4"></rect><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z"></path><circle cx="18" cy="6" r="1"></circle></svg>Instagram</a>
+    <a href="https://facebook.com/guayacanpreserve" target="_blank" style="color:var(--gold);text-decoration:none;margin:0 10px;display:inline-flex;align-items:center;gap:4px;font-size:.85rem;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 2h-3a6 6 0 0 0-6 6v3H7v4h2v8h4v-8h3l1-4h-4V8a2 2 0 0 1 2-2h1z"></path></svg>Facebook</a>
+  </div>
+
+  <div class="foot">
+    <span id="t-foot">¿Preguntas?</span>
+    <a href="https://wa.me/573102915558" target="_blank">WhatsApp</a>
+  </div>
+  <div style="text-align:center;margin-top:16px;">
+    <span id="rntFoot" style="display:inline-block;font-size:.86rem;font-weight:600;color:var(--gold);border:1px solid rgba(201,162,39,.45);border-radius:999px;padding:6px 16px;letter-spacing:.02em;"></span>
+  </div>
+</div>
+
+<script>
+/* ============ CONFIG ============ */
+const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+const INDEX_BUILD = 'v2.28.0 · 2026-08-01';
+console.log('[GNP] index build ' + INDEX_BUILD);
+
+let LANG = 'ES';
+let CONFIG = null;
+let selectedPlan = null;        // plan key, e.g. 'PASADIA'
+let selectedSubOption = null;   // sub-option key, e.g. 'AMANECER' (Pasadía only)
+let guestCount = 2;
+let almuerzoQty = 0;
+let isColombian = null;         // null until answered
+let hasMinors = null;           // null until answered
+let availabilityCache = {};
+
+/* ============ I18N (static UI chrome; plan/inclusion text comes from CONFIG) ============ */
+const I18N = {
+  ES: {
+    eyebrow: 'Avistamiento de aves · Colombia',
+    h1: 'Elige tu experiencia en la reserva.',
+    sub: 'Escoge tu plan, cuéntanos cuántos son, y verás el desglose completo antes de confirmar.',
+    formTitle: 'Solicitud de reserva',
+    formSub: 'Te confirmaremos disponibilidad y pago por correo.',
+    lblName: 'Nombre y apellidos', lblEmail: 'Email', lblWa: 'WhatsApp',
+    waHint: 'Solo el número, sin espacios. Ej: 3001234567',
+    lblDate: 'Fecha de visita', lblPlan: 'Plan', lblSubOption: 'Jornada',
+    lblArrival: 'Hora de llegada',
+    arrivalHint: 'La hora ideal varía según el clima y la migración (mayo y octubre). Indícanos tu preferencia y la ajustamos contigo.',
+    lblGuests: 'Personas', lblAlmuerzo: 'Almuerzo (adicional)',
+    lblNationality: '¿Eres colombiano o residente en Colombia?',
+    natYes: 'Sí', natNo: 'No',
+    natHint: 'Los visitantes extranjeros tienen un impuesto adicional, que verás detallado abajo.',
+    inclHead: 'Incluye', excHead: 'No incluye',
+    lblReq: 'Requerimientos especiales (alergias, movilidad, etc.)',
+    lblReceipt: 'Resumen y desglose',
+    receiptPending: 'Selecciona un plan para ver el desglose.',
+    taxPendingNote: 'Indica tu nacionalidad arriba para ver impuestos y total.',
+    rSubtotal: 'Subtotal', rTax: 'Impuesto extranjero', rTotal: 'Total',
+    rDeposit: 'Depósito para reservar', rRateNote: 'Precios en COP. USD referencial a la tasa del día',
+    ackText: 'He leído y aprobado los servicios y el desglose de costo mostrado arriba.',
+    ackHint: 'Al aprobar, enviaremos una copia de los servicios y el desglose a tu correo y WhatsApp.',
+    waiverText: 'Entiendo que el avistamiento de aves implica caminar por senderos naturales y acepto los riesgos asociados. Eximo a Guayacan Preserve de responsabilidad por lesiones derivadas de mi participación.',
+    waiverHint: 'Escribe tu nombre completo como firma.',
+    submit: 'Enviar solicitud', sending: 'Enviando...',
+    okEyebrow: 'Solicitud recibida',
+    okBody: 'Te enviamos una copia de tu reserva y el desglose por correo y WhatsApp. Revisaremos disponibilidad y te compartiremos las instrucciones de pago.',
+    foot: '¿Preguntas?',
+    errRequired: 'Completa todos los campos requeridos.',
+    errWa: 'Revisa el formato del WhatsApp.',
+    errAck: 'Debes aprobar el desglose de servicios y costo.',
+    errNat: 'Indica si eres colombiano o residente.',
+    spotsLeft: 'cupos disponibles', spotOne: 'cupo disponible', full: 'Sin cupo', minDays: 'Requiere mínimo {n} días de antelación.',
+    calLink: 'Ver calendario de disponibilidad',
+    perPerson: 'por persona', each: 'c/u'
+  },
+  EN: {
+    eyebrow: 'Birdwatching · Colombia',
+    h1: 'Choose your experience at the preserve.',
+    sub: 'Pick your plan, tell us how many, and see the full breakdown before you confirm.',
+    formTitle: 'Reservation request',
+    formSub: "We'll confirm availability and payment by email.",
+    lblName: 'Full name', lblEmail: 'Email', lblWa: 'WhatsApp',
+    waHint: 'Number only, no spaces. E.g: 3001234567',
+    lblDate: 'Visit date', lblPlan: 'Plan', lblSubOption: 'Session',
+    lblArrival: 'Arrival time',
+    arrivalHint: 'The ideal time varies with weather and migration (May & Oct). Tell us your preference and we adjust it with you.',
+    lblGuests: 'Guests', lblAlmuerzo: 'Lunch (add-on)',
+    lblNationality: 'Are you Colombian or a resident of Colombia?',
+    natYes: 'Yes', natNo: 'No',
+    natHint: 'Foreign visitors have an additional tax, itemized below.',
+    inclHead: 'Includes', excHead: 'Not included',
+    lblReq: 'Special requirements (allergies, mobility, etc.)',
+    lblReceipt: 'Summary & breakdown',
+    receiptPending: 'Select a plan to see the breakdown.',
+    taxPendingNote: 'Choose your nationality above to see tax and total.',
+    rSubtotal: 'Subtotal', rTax: 'Foreign tax', rTotal: 'Total',
+    rDeposit: 'Deposit to reserve', rRateNote: 'Prices in COP. USD reference at today\u2019s rate',
+    ackText: 'I have read and approved the services and cost breakdown shown above.',
+    ackHint: 'On approval, we send a copy of the services and breakdown to your email and WhatsApp.',
+    waiverText: 'I understand birdwatching involves walking on natural trails and accept the associated risks. I release Guayacan Preserve from liability for injuries arising from my participation.',
+    waiverHint: 'Type your full name as your signature.',
+    submit: 'Send request', sending: 'Sending...',
+    okEyebrow: 'Request received',
+    okBody: "We sent a copy of your reservation and breakdown to your email and WhatsApp. We'll check availability and follow up with payment instructions.",
+    foot: 'Questions?',
+    errRequired: 'Please complete all required fields.',
+    errWa: 'Check the WhatsApp number format.',
+    errAck: 'You must approve the services and cost breakdown.',
+    errNat: 'Please indicate whether you are Colombian or a resident.',
+    spotsLeft: 'spots left', spotOne: 'spot left', full: 'Fully booked', minDays: 'Requires at least {n} days advance notice.',
+    calLink: 'View availability calendar',
+    perPerson: 'per person', each: 'ea'
+  }
+};
+
+/* ============ FORMATTERS ============ */
+function copFmt(n){ return '$' + Math.round(Number(n)||0).toLocaleString('es-CO') + ' COP'; }
+function usdFmt(n){ return 'US$' + (Number(n)||0).toFixed(2); }
+
+/* ============ LANGUAGE ============ */
+function setLang(L){
+  LANG = L;
+  document.getElementById('langEs').classList.toggle('active', L==='ES');
+  document.getElementById('langEn').classList.toggle('active', L==='EN');
+  const t = I18N[L];
+  Object.keys(t).forEach(k => { const el = document.getElementById('t-'+k); if (el) el.textContent = t[k]; });
+  document.getElementById('f_req').placeholder = t.lblReq;
+  document.getElementById('f_waiverName').placeholder = t.lblName;
+  document.getElementById('natYes').textContent = t.natYes;
+  document.getElementById('natNo').textContent = t.natNo;
+  document.getElementById('dateHint').textContent = CONFIG ? t.minDays.replace('{n}', CONFIG.minDaysAdvance) : '';
+  renderPlans();
+  renderSubOptions();
+  renderInclusions();
+  renderAlmuerzoHint();
+  renderExtras();
+  renderReceipt();
+}
+
+/* ============ INIT ============ */
+async function loadConfig(){
+  try {
+    const res = await fetch(API_BASE + '?action=config');
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'config error');
+    CONFIG = json.data;
+    if (CONFIG.version) console.log('[GNP] backend ' + CONFIG.version + ' · index ' + INDEX_BUILD + (CONFIG.version === INDEX_BUILD ? ' ✓' : ' ⚠ mismatch'));
+    const min = new Date(); min.setDate(min.getDate() + Number(CONFIG.minDaysAdvance || 0));
+    document.getElementById('f_fecha').min = min.toISOString().slice(0,10);
+    setLang(LANG);
+
+    const params = new URLSearchParams(window.location.search);
+    const preDate = params.get('date');
+    if (preDate && /^\d{4}-\d{2}-\d{2}$/.test(preDate)) {
+      document.getElementById('f_fecha').value = preDate;
+      onDateChange();
+    }
+  } catch (err) {
+    console.error('Config load failed', err);
+  }
+}
+
+/* ============ PLANS ============ */
+function planByKey(key){ return (CONFIG && CONFIG.plans || []).find(p => p.key === key) || null; }
+
+function renderPlans(){
+  if (!CONFIG || !CONFIG.plans) return;
+  const box = document.getElementById('planList');
+  box.innerHTML = '';
+  CONFIG.plans.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'jcard' + (selectedPlan === p.key ? ' selected' : '');
+    const label = LANG === 'EN' ? p.labelEn : p.labelEs;
+    div.innerHTML = '<div class="jname">'+label+'</div>' +
+      '<div class="jprice">'+copFmt(p.priceCop)+' · '+usdFmt(cop2usd(p.priceCop))+' '+I18N[LANG].perPerson+'</div>';
+    div.onclick = () => selectPlan(p.key);
+    box.appendChild(div);
+  });
+}
+
+function selectPlan(key){
+  clearInvalidMarks();
+  selectedPlan = key;
+  const plan = planByKey(key);
+  // reset dependent state
+  selectedSubOption = null;
+  almuerzoQty = 0;
+  document.getElementById('almuerzoN').textContent = '0';
+
+  const hasSub = plan && plan.subOptions && plan.subOptions.length > 0;
+  document.getElementById('subOptionField').classList.toggle('hideit', !hasSub);
+  document.getElementById('arrivalField').classList.toggle('hideit', !hasSub);
+  document.getElementById('almuerzoField').classList.toggle('hideit', !(plan && plan.allowsAlmuerzo));
+
+  renderPlans();
+  renderSubOptions();
+  renderInclusions();
+  renderAlmuerzoHint();
+  checkAvailability();
+  renderReceipt();
+}
+
+function renderSubOptions(){
+  const plan = planByKey(selectedPlan);
+  if (!plan || !plan.subOptions || !plan.subOptions.length) return;
+  const box = document.getElementById('subOptionList');
+  box.innerHTML = '';
+  plan.subOptions.forEach(s => {
+    const div = document.createElement('div');
+    div.className = 'jcard' + (selectedSubOption === s.key ? ' selected' : '');
+    const label = LANG === 'EN' ? s.labelEn : s.labelEs;
+    div.innerHTML = '<div class="jname">'+label+'</div>' +
+      (s.arrivalWindow ? '<div class="jwin">'+(LANG==='EN'?'Arrival':'Llegada')+' '+s.arrivalWindow+'</div>' : '') +
+      '<div class="jcap" id="cap_'+s.key+'"></div>';
+    div.onclick = () => { selectedSubOption = s.key; renderSubOptions(); checkAvailability(); };
+    box.appendChild(div);
+  });
+  checkAvailability();
+}
+
+function renderInclusions(){
+  const plan = planByKey(selectedPlan);
+  const box = document.getElementById('inclBox');
+  if (!plan) { box.classList.add('hideit'); return; }
+  box.classList.remove('hideit');
+  var inc = (LANG === 'EN' ? plan.incluyeEn : plan.incluyeEs) || [];
+  var exc = (LANG === 'EN' ? plan.excluyeEn : plan.excluyeEs) || [];
+  inc = inc.slice(); exc = exc.slice();
+  // A selected add-on is now included, so move it out of "No incluye".
+  var _norm = function(x){ return String(x).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,''); };
+  var _sel = [];
+  if (CONFIG && CONFIG.serviceGuide && document.getElementById('f_serviceGuide') && document.getElementById('f_serviceGuide').checked) _sel.push(LANG === 'EN' ? CONFIG.serviceGuide.labelEn : CONFIG.serviceGuide.labelEs);
+  if (CONFIG && CONFIG.serviceTransport && document.getElementById('f_serviceTransport') && document.getElementById('f_serviceTransport').checked) _sel.push(LANG === 'EN' ? CONFIG.serviceTransport.labelEn : CONFIG.serviceTransport.labelEs);
+  _sel.forEach(function(lbl){
+    var kw = _norm(lbl).split(' ')[0];
+    exc = exc.filter(function(x){ return _norm(x).indexOf(kw) === -1; });
+    if (inc.map(_norm).indexOf(_norm(lbl)) === -1) inc.push(lbl);
+  });
+  const incUl = document.getElementById('inclList');
+  const excUl = document.getElementById('excList');
+  incUl.innerHTML = inc.map(x => '<li class="inc">'+x+'</li>').join('');
+  excUl.innerHTML = exc.map(x => '<li class="exc">'+x+'</li>').join('');
+  document.getElementById('excWrap').classList.toggle('hideit', !(exc && exc.length));
+}
+
+function renderAlmuerzoHint(){
+  const plan = planByKey(selectedPlan);
+  const el = document.getElementById('almuerzoHint');
+  if (!plan || !plan.allowsAlmuerzo || !CONFIG) { el.textContent = ''; return; }
+  el.textContent = copFmt(CONFIG.mealAlmuerzoPriceCop) + ' ' + I18N[LANG].each;
+}
+
+/* ============ AVAILABILITY (Pasadía sub-options map to AMANECER/TARDE) ============ */
+async function checkAvailability(){
+  const dateStr = document.getElementById('f_fecha').value;
+  const plan = planByKey(selectedPlan);
+  if (!dateStr || !CONFIG || !plan || !plan.subOptions || !plan.subOptions.length) return;
+  let data = availabilityCache[dateStr];
+  if (!data) {
+    try {
+      const res = await fetch(API_BASE + '?action=availability&date=' + dateStr);
+      const json = await res.json();
+      if (json.ok) { data = json.data.jornadas; availabilityCache[dateStr] = data; }
+    } catch (err) { console.error(err); }
+  }
+  if (!data) return;
+  const t = I18N[LANG];
+  plan.subOptions.forEach(s => {
+    const el = document.getElementById('cap_'+s.key);
+    if (!el) return;
+    const d = Array.isArray(data) ? data.find(x => x.key === s.key) : null;
+    if (!d) { el.textContent = ''; return; }
+    const word = (d.remaining === 1) ? t.spotOne : t.spotsLeft;
+    if (d.remaining <= 0) { el.textContent = t.full; el.className = 'jcap full'; }
+    else if (d.remaining <= 2) { el.textContent = d.remaining + ' ' + word; el.className = 'jcap low'; }
+    else { el.textContent = d.remaining + ' ' + word; el.className = 'jcap ok'; }
+  });
+}
+
+function onDateChange(){ checkAvailability(); }
+
+/* ============ STEPPERS + NATIONALITY ============ */
+function stepGuests(delta){
+  guestCount = Math.max(1, Math.min(20, guestCount + delta));
+  document.getElementById('guestN').textContent = guestCount;
+  renderReceipt();
+}
+
+function stepAlmuerzo(delta){
+  almuerzoQty = Math.max(0, Math.min(40, almuerzoQty + delta));
+  document.getElementById('almuerzoN').textContent = almuerzoQty;
+  renderReceipt();
+}
+
+function setNationality(val){
+  clearInvalidMarks();
+  isColombian = val;
+  document.getElementById('natYes').classList.toggle('selected', val === true);
+  document.getElementById('natNo').classList.toggle('selected', val === false);
+  renderReceipt();
+}
+
+function setMinors(val){
+  clearInvalidMarks();
+  hasMinors = val;
+  document.getElementById('minorsYes').classList.toggle('selected', val === true);
+  document.getElementById('minorsNo').classList.toggle('selected', val === false);
+  document.getElementById('minorWithField').classList.toggle('hideit', val !== true);
+  if (!val) { var _mw = document.getElementById('f_minorWith'); if (_mw) _mw.value = ''; }
+}
+
+/* ============ RECEIPT (mirrors computeReceipt_ in Code.gs; server recomputes authoritatively) ============ */
+function cop2usd(cop){
+  const rate = CONFIG ? Number(CONFIG.exchangeRate) : 0;
+  return rate > 0 ? Math.round((cop / rate) * 100) / 100 : 0;
+}
+
+function computeReceiptLocal(){
+  const plan = planByKey(selectedPlan);
+  if (!plan || !CONFIG) return null;
+  const pax = guestCount;
+  const almPrice = Number(CONFIG.mealAlmuerzoPriceCop) || 0;
+  const aQty = plan.allowsAlmuerzo ? almuerzoQty : 0;
+  const taxKnown = (isColombian !== null);
+  const taxPct = taxKnown ? (isColombian ? 0 : (Number(CONFIG.foreignTaxPct) || 0)) : null;
+  const depositPct = Number(CONFIG.depositPct) || 50;
+
+  const lines = [];
+  lines.push({ es: plan.labelEs, en: plan.labelEn, qty: pax, totalCop: plan.priceCop * pax });
+  if (aQty > 0) lines.push({ es: 'Almuerzo', en: 'Lunch', qty: aQty, totalCop: almPrice * aQty });
+  if (CONFIG.serviceGuide && CONFIG.serviceGuide.enabled && document.getElementById('f_serviceGuide') && document.getElementById('f_serviceGuide').checked && Number(CONFIG.serviceGuide.priceCop) > 0) {
+    lines.push({ es: CONFIG.serviceGuide.labelEs, en: CONFIG.serviceGuide.labelEn, qty: 1, totalCop: Number(CONFIG.serviceGuide.priceCop) });
+  }
+  if (CONFIG.serviceTransport && CONFIG.serviceTransport.enabled && document.getElementById('f_serviceTransport') && document.getElementById('f_serviceTransport').checked && Number(CONFIG.serviceTransport.priceCop) > 0) {
+    lines.push({ es: CONFIG.serviceTransport.labelEs, en: CONFIG.serviceTransport.labelEn, qty: 1, totalCop: Number(CONFIG.serviceTransport.priceCop) });
+  }
+
+  const subtotalCop = lines.reduce((s, l) => s + l.totalCop, 0);
+  let taxCop = null, totalCop = null, depositCop = null;
+  if (taxKnown) {
+    taxCop = Math.round(subtotalCop * taxPct / 100);
+    totalCop = subtotalCop + taxCop;
+    depositCop = Math.round(totalCop * depositPct / 100);
+  }
+  return { lines, subtotalCop, taxKnown, taxPct, taxCop, totalCop, depositPct, depositCop };
+}
+
+function renderExtras(){
+  if (!CONFIG) return;
+  const EN = LANG === 'EN';
+  var sg = CONFIG.serviceGuide || {}, st = CONFIG.serviceTransport || {}, anySvc = false;
+  var lblS = document.getElementById('t-lblServices'); if (lblS) lblS.textContent = EN ? 'Additional services' : 'Servicios adicionales';
+  var gl = document.getElementById('svcGuideLabel'), gw = document.getElementById('f_serviceGuide');
+  if (gl) { if (sg.enabled) { gl.textContent = (EN ? sg.labelEn : sg.labelEs) + (Number(sg.priceCop) > 0 ? ('  ·  ' + copFmt(Number(sg.priceCop))) : ''); gl.parentElement.style.display = ''; anySvc = true; } else { gl.parentElement.style.display = 'none'; if (gw) gw.checked = false; } }
+  var tl = document.getElementById('svcTransportLabel'), tw = document.getElementById('f_serviceTransport');
+  if (tl) { if (st.enabled) { tl.textContent = (EN ? st.labelEn : st.labelEs) + (Number(st.priceCop) > 0 ? ('  ·  ' + copFmt(Number(st.priceCop))) : ''); tl.parentElement.style.display = ''; anySvc = true; } else { tl.parentElement.style.display = 'none'; if (tw) tw.checked = false; } }
+  var esf = document.getElementById('extraServicesField'); if (esf) esf.classList.toggle('hideit', !anySvc);
+  var insText = EN ? (CONFIG.insuranceEn || '') : (CONFIG.insuranceEs || '');
+  var insEl = document.getElementById('insuranceText'), insBox = document.getElementById('insuranceNote');
+  if (insEl) insEl.textContent = insText; if (insBox) insBox.classList.toggle('hideit', !insText);
+  var lblM = document.getElementById('t-lblMinors'); if (lblM) lblM.textContent = EN ? 'Are minors under 18 traveling?' : '¿Viajan menores de 18 años?';
+  var mn = document.getElementById('minorsNotice'); if (mn) mn.textContent = EN ? (CONFIG.minorsEn || '') : (CONFIG.minorsEs || '');
+  var mw = document.getElementById('f_minorWith'); if (mw) mw.placeholder = EN ? 'Who is the minor attending with? (responsible adult)' : '¿Con quién asiste el menor? (adulto responsable)';
+  var rf = document.getElementById('rntFoot'); if (rf) rf.textContent = CONFIG.companyRnt ? ((EN ? 'National Tourism Registry (RNT): ' : 'Registro Nacional de Turismo (RNT): ') + CONFIG.companyRnt) : '';
+}
+
+function renderReceipt(){
+  const t = I18N[LANG];
+  const pending = document.getElementById('receiptPending');
+  const content = document.getElementById('receiptContent');
+  const r = computeReceiptLocal();
+  if (!r) {
+    pending.textContent = t.receiptPending;
+    pending.classList.remove('hideit');
+    content.classList.add('hideit');
+    return;
+  }
+  pending.classList.add('hideit');
+  content.classList.remove('hideit');
+
+  const row = (labelHtml, cop, usd, cls) =>
+    '<div class="rline '+(cls||'')+'"><div class="rlabel">'+labelHtml+'</div>' +
+    '<div class="ramt"><span class="cop">'+copFmt(cop)+'</span><span class="usd">'+usdFmt(usd)+'</span></div></div>';
+
+  let html = '<div class="rhead">'+t.lblReceipt+'</div>';
+  r.lines.forEach(l => {
+    const name = LANG === 'EN' ? l.en : l.es;
+    html += row(name + ' <small>× ' + l.qty + '</small>', l.totalCop, cop2usd(l.totalCop));
+  });
+  html += '<hr class="rsep">';
+  html += row(t.rSubtotal, r.subtotalCop, cop2usd(r.subtotalCop), 'subtotal');
+
+  if (!r.taxKnown) {
+    html += '<div class="rpending">'+t.taxPendingNote+'</div>';
+  } else {
+    if (r.taxCop > 0) {
+      html += row(t.rTax + ' ('+r.taxPct+'%)', r.taxCop, cop2usd(r.taxCop), 'tax');
+    }
+    html += row(t.rTotal, r.totalCop, cop2usd(r.totalCop), 'total');
+    html += row(t.rDeposit + ' ('+r.depositPct+'%)', r.depositCop, cop2usd(r.depositCop), 'deposit');
+  }
+  const rateTxt = CONFIG && CONFIG.exchangeRate ? (' — 1 USD = ' + copFmt(CONFIG.exchangeRate)) : '';
+  html += '<div class="rnote">'+t.rRateNote+rateTxt+'.</div>';
+  content.innerHTML = html;
+}
+
+/* ============ SUBMIT ============ */
+function showMsg(text, type){
+  const box = document.getElementById('msgBox');
+  box.textContent = text;
+  box.className = 'msg show ' + type;
+}
+
+function clearInvalidMarks(){
+  document.querySelectorAll('.field-invalid').forEach(el => el.classList.remove('field-invalid'));
+  document.querySelectorAll('.group-invalid').forEach(el => el.classList.remove('group-invalid'));
+}
+// Any edit or selection clears the red highlights.
+document.addEventListener('input', clearInvalidMarks, true);
+document.addEventListener('change', clearInvalidMarks, true);
+
+async function submitReservation(){
+  const t = I18N[LANG];
+  const nombre = document.getElementById('f_nombre').value.trim();
+  const email = document.getElementById('f_email').value.trim();
+  const waCountry = document.getElementById('f_waCountry').value.trim();
+  const waNumber = document.getElementById('f_waNumber').value.trim().replace(/[^\d]/g, '');
+  const wa = waCountry + waNumber;
+  const fecha = document.getElementById('f_fecha').value;
+  const req = document.getElementById('f_req').value.trim();
+  const arrival = document.getElementById('f_arrival').value.trim();
+  const ackAccepted = document.getElementById('f_ack').checked;
+  const waiverAccepted = document.getElementById('f_waiver').checked;
+  const waiverSignedName = document.getElementById('f_waiverName').value.trim();
+
+  const plan = planByKey(selectedPlan);
+  const hasSub = plan && plan.subOptions && plan.subOptions.length > 0;
+
+  // Clear any prior highlights, then flag the first incomplete field and scroll to it.
+  clearInvalidMarks();
+  function fail(target, msg, isGroup){
+    showMsg(msg, 'err');
+    if (target){
+      const el = document.getElementById(target);
+      if (el){
+        el.classList.add(isGroup ? 'group-invalid' : 'field-invalid');
+        el.scrollIntoView({ behavior:'smooth', block:'center' });
+        if (!isGroup && el.querySelector){ /* container */ }
+        if (el.focus && !isGroup) try{ el.focus({preventScroll:true}); }catch(e){}
+      }
+    }
+    return false;
+  }
+
+  if (!nombre)  return fail('f_nombre',  t.errRequired);
+  if (!email)   return fail('f_email',   t.errRequired);
+  if (!waNumber) return fail('f_waNumber', t.errRequired);
+  if (waNumber.length < 7 || waNumber.length > 15) return fail('f_waNumber', t.errWa);
+  if (!fecha)   return fail('f_fecha',   t.errRequired);
+  if (!selectedPlan) return fail('planList', t.errRequired, true);
+  if (hasSub && !selectedSubOption) return fail('subOptionList', t.errRequired, true);
+  if (isColombian === null) return fail('natGroup', t.errNat, true);
+  if (hasMinors === true && !document.getElementById('f_minorWith').value.trim()) return fail('f_minorWith', LANG === 'EN' ? 'Please enter the responsible adult accompanying the minor(s).' : 'Indica el adulto responsable que acompaña al menor.');
+  if (!ackAccepted) return fail('ackField', t.errAck, true);
+  if (!waiverAccepted) return fail('waiverField', t.errRequired, true);
+  if (!waiverSignedName) return fail('f_waiverName', t.errRequired);
+
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  document.getElementById('t-submit').textContent = t.sending;
+
+  // jornada: sub-option key for Pasadía (matches availability keys); plan key otherwise.
+  const jornada = hasSub ? selectedSubOption : selectedPlan;
+  const almQty = (plan && plan.allowsAlmuerzo) ? almuerzoQty : 0;
+  const servicios = almQty > 0 ? ('Almuerzo x' + almQty) : '';
+
+  const payload = {
+    action: 'new',
+    nombre, email, whatsapp: wa, idioma: LANG, fecha,
+    plan: selectedPlan,
+    subOption: hasSub ? selectedSubOption : '',
+    jornada: jornada,
+    arrivalTime: hasSub ? arrival : '',
+    personas: String(guestCount),
+    almuerzoQty: String(almQty),
+    isColombian: isColombian,
+    serviceGuide: !!(document.getElementById('f_serviceGuide') && document.getElementById('f_serviceGuide').checked),
+    serviceTransport: !!(document.getElementById('f_serviceTransport') && document.getElementById('f_serviceTransport').checked),
+    minorAccompaniedBy: (document.getElementById('f_minorWith') ? document.getElementById('f_minorWith').value : ''),
+    servicios: servicios,
+    requerimientos: req,
+    source: 'Web',
+    servicesAck: true,
+    waiverAccepted: true,
+    waiverSignedName: waiverSignedName
+  };
+
+  try {
+    const res = await fetch(API_BASE, { method: 'POST', headers: {'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(payload) });
+    const json = await res.json();
+    if (json.ok) {
+      document.getElementById('formView').style.display = 'none';
+      document.getElementById('successView').classList.add('show');
+      document.getElementById('successRid').textContent = json.reservationId;
+    } else {
+      showMsg(json.message || json.error || 'Error', 'err');
+      btn.disabled = false;
+      document.getElementById('t-submit').textContent = t.submit;
+    }
+  } catch (err) {
+    showMsg(String(err.message || err), 'err');
+    btn.disabled = false;
+    document.getElementById('t-submit').textContent = t.submit;
+  }
+}
+
+loadConfig();
+</script>
+</body>
+</html>
