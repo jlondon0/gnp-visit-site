@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<!-- GNP-BUILD: manage v2.15 · 2026-07-16 -->
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mi Reserva - Guayacan</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#EFEAE0;color:#15201A;font-family:'Inter',system-ui,sans-serif;}
+.wrap{max-width:520px;margin:0 auto;padding:28px 18px 60px;}
+.brand{text-align:center;margin-bottom:20px;}
+.brand img{max-width:200px;height:auto;}
+.subtitle{text-align:center;font-size:.85rem;color:#6B7568;margin-bottom:20px;}
+.card{background:#fff;border-radius:18px;padding:24px 22px;box-shadow:0 20px 40px -16px rgba(0,0,0,.18);}
+h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin-bottom:4px;}
+.meta{font-size:.84rem;color:#6B7568;margin-bottom:18px;}
+.row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #EFEAE0;font-size:.92rem;}
+.row .k{color:#6B7568;}
+.row .v{font-weight:600;}
+.notice{margin:16px 0;padding:13px 14px;background:#F6F2E8;border-radius:12px;font-size:.86rem;line-height:1.55;}
+.btn{width:100%;border:none;border-radius:11px;padding:14px;font-size:.93rem;font-weight:600;cursor:pointer;margin-top:12px;display:block;}
+.btn-cancel{background:#1F3B2E;color:#FBF6EC;}
+.btn-reschedule{background:#fff;color:#A3274C;border:1.5px solid #A3274C;}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.msg{margin-top:12px;font-size:.86rem;padding:10px 13px;border-radius:9px;display:none;}
+.msg.show{display:block;}
+.msg.err{background:#FBE5EA;color:#A3274C;}
+.msg.ok{background:#E6F2EA;color:#1F5C3A;}
+.divider{margin:20px 0;border:none;border-top:1px solid #EFEAE0;}
+.reschedule-label{font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:#6B7568;margin-bottom:6px;display:block;}
+input[type=date]{width:100%;border:1.5px solid #DDD6C4;border-radius:10px;padding:11px 12px;font-size:.92rem;font-family:'Inter';}
+.footer{text-align:center;margin-top:40px;font-size:.82rem;}
+.footer a{color:#1F3B2E;text-decoration:none;margin:0 8px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><img src="logo.png" alt="Guayacan Natural Preserve"></div>
+  <div class="subtitle">Mi Reserva</div>
+
+  <div class="card" id="loadCard"><p style="color:#6B7568;text-align:center;padding:10px 0;">Cargando...</p></div>
+
+  <div class="card" id="mainCard" style="display:none;">
+    <h1 id="resId"></h1>
+    <div class="meta" id="metaLine"></div>
+
+    <div class="row"><span class="k">Fecha</span><span class="v" id="fecha"></span></div>
+    <div class="row"><span class="k">Jornada</span><span class="v" id="jornada"></span></div>
+    <div class="row"><span class="k">Personas</span><span class="v" id="personas"></span></div>
+    <div class="row" style="border:none;"><span class="k">Pago</span><span class="v" id="pago"></span></div>
+
+    <div class="notice" id="refundBox"></div>
+
+    <div id="cancelZone">
+      <button class="btn btn-cancel" id="btnCancel" onclick="doCancel()">Cancelar reserva</button>
+      <div class="msg" id="cancelMsg"></div>
+    </div>
+
+    <hr class="divider">
+
+    <div id="rescheduleZone">
+      <span class="reschedule-label">Prefieres otra fecha?</span>
+      <input type="date" id="newDate">
+      <button class="btn btn-reschedule" id="btnReschedule" onclick="doReschedule()">Solicitar cambio de fecha</button>
+      <div class="msg" id="rescheduleMsg"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="https://maps.app.goo.gl/WidM1FDxCbVKXHZ77" target="_blank">Mapas</a>
+    <a href="https://ebird.org/hotspot/L30085815" target="_blank">eBird</a>
+    <a href="https://instagram.com/guayacanpreserve" target="_blank">Instagram</a>
+    <a href="https://facebook.com/guayacanpreserve" target="_blank">Facebook</a>
+  </div>
+</div>
+
+<script>
+const API = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+const token = new URLSearchParams(window.location.search).get('token') || '';
+
+async function load() {
+  if (!token) { showLoadErr('Token faltante.'); return; }
+  try {
+    const r = await fetch(API + '?action=manage&token=' + encodeURIComponent(token));
+    const j = await r.json();
+    if (!j.ok) { showLoadErr(j.error || 'No se pudo cargar.'); return; }
+    render(j.data);
+  } catch(e) { showLoadErr(String(e)); }
+}
+
+let EN = false;
+function render(d) {
+  EN = String(d.idioma || 'ES').toUpperCase() === 'EN';
+  if (EN) {
+    document.querySelector('.subtitle').textContent = 'My Reservation';
+    document.getElementById('btnCancel').textContent = 'Cancel reservation';
+    document.querySelector('.reschedule-label').textContent = 'Prefer another date?';
+    document.getElementById('btnReschedule').textContent = 'Request date change';
+  }
+  document.getElementById('loadCard').style.display = 'none';
+  document.getElementById('mainCard').style.display = 'block';
+  document.getElementById('resId').textContent = d.reservationId;
+  document.getElementById('metaLine').textContent = 'Estado: ' + d.estado + ' | Pago: ' + (d.paymentStatus || 'N/A');
+  document.getElementById('fecha').textContent = d.fecha;
+  document.getElementById('jornada').textContent = d.jornada;
+  document.getElementById('personas').textContent = d.personas;
+  document.getElementById('pago').textContent = d.paymentStatus || '—';
+
+  const rb = document.getElementById('refundBox');
+  if (d.canCancel) {
+    rb.style.background = '#F6F2E8';
+    rb.style.color = '#15201A';
+    rb.textContent = (d.refundLine || '') + (d.refundPolicyText || '');
+  } else {
+    rb.style.background = '#FBE5EA';
+    rb.style.color = '#A3274C';
+    rb.textContent = EN ? 'This reservation can no longer be cancelled online. Please contact us directly.' : 'Esta reserva ya no puede cancelarse en línea. Contáctanos directamente.';
+    document.getElementById('cancelZone').style.display = 'none';
+    document.getElementById('rescheduleZone').style.display = 'none';
+  }
+}
+
+function showLoadErr(msg) {
+  document.getElementById('loadCard').innerHTML = '<p style="color:#A3274C;text-align:center;padding:10px 0;">' + msg + '</p>';
+}
+
+async function doCancel() {
+  if (!confirm(EN ? 'Confirm you want to cancel this reservation?' : 'Confirmas que deseas cancelar esta reserva?')) return;
+  document.getElementById('btnCancel').disabled = true;
+  const msg = document.getElementById('cancelMsg');
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action: 'guestCancel', token: token})
+    });
+    const j = await r.json();
+    msg.className = j.ok ? 'msg show ok' : 'msg show err';
+    msg.textContent = j.message || j.error;
+    if (!j.ok) document.getElementById('btnCancel').disabled = false;
+  } catch(e) {
+    msg.className = 'msg show err';
+    msg.textContent = String(e);
+    document.getElementById('btnCancel').disabled = false;
+  }
+}
+
+async function doReschedule() {
+  const nd = document.getElementById('newDate').value;
+  const msg = document.getElementById('rescheduleMsg');
+  if (!nd) { msg.className = 'msg show err'; msg.textContent = EN ? 'Please select a date.' : 'Selecciona una fecha.'; return; }
+  document.getElementById('btnReschedule').disabled = true;
+  try {
+    const r = await fetch(API, {
+      method: 'POST',
+      headers: {'Content-Type': 'text/plain;charset=utf-8'},
+      body: JSON.stringify({action: 'guestRescheduleRequest', token: token, newDate: nd})
+    });
+    const j = await r.json();
+    msg.className = j.ok ? 'msg show ok' : 'msg show err';
+    msg.textContent = j.message || j.error;
+    if (!j.ok) document.getElementById('btnReschedule').disabled = false;
+  } catch(e) {
+    msg.className = 'msg show err';
+    msg.textContent = String(e);
+    document.getElementById('btnReschedule').disabled = false;
+  }
+}
+
+load();
+</script>
+</body>
+</html>
