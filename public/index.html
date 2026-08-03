@@ -241,7 +241,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 
         <div class="field hideit" id="arrivalField">
           <label id="t-lblArrival">Hora de llegada</label>
-          <input type="time" id="f_arrival" step="900">
+          <input type="time" id="f_arrival" step="900" onchange="clampArrival_()">
           <div class="hint" id="t-arrivalHint">La hora ideal varía según el clima y la migración (mayo y octubre). Indícanos tu preferencia y la ajustamos contigo.</div>
         </div>
 
@@ -536,6 +536,43 @@ function renderPlans(){
   });
 }
 
+function to24_(hh, mer){ hh = Number(hh); if (mer){ mer = mer.toUpperCase(); if (mer==='PM' && hh<12) hh+=12; if (mer==='AM' && hh===12) hh=0; } return hh; }
+function parseWindow_(str){
+  if (!str) return null;
+  var s = String(str).trim();
+  var parts = s.split(/\s*[-\u2013\u2014]\s*/);
+  if (parts.length !== 2) return null;
+  var sharedMer = null; var mAll = s.match(/(AM|PM)\s*$/i); if (mAll) sharedMer = mAll[1].toUpperCase();
+  function part(p){
+    var m = p.match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+    if (!m) return null;
+    var hh = to24_(m[1], m[3] ? m[3] : sharedMer); var mm = Number(m[2]);
+    return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm;
+  }
+  var a = part(parts[0]), b = part(parts[1]);
+  if (!a || !b) return null;
+  return { min: a, max: b };
+}
+function applyArrivalWindow_(){
+  var el = document.getElementById('f_arrival'); if (!el) return;
+  var plan = planByKey(selectedPlan); var win = null;
+  if (plan && plan.subOptions && selectedSubOption){
+    var s = plan.subOptions.filter(function(x){ return x.key === selectedSubOption; })[0];
+    if (s) win = parseWindow_(s.arrivalWindow);
+  }
+  if (win){
+    el.min = win.min; el.max = win.max; el.step = 900;
+    if (!el.value || el.value < win.min || el.value > win.max) el.value = win.min;
+  } else {
+    el.removeAttribute('min'); el.removeAttribute('max');
+  }
+}
+function clampArrival_(){
+  var el = document.getElementById('f_arrival'); if (!el || !el.value) return;
+  if (el.min && el.value < el.min) el.value = el.min;
+  else if (el.max && el.value > el.max) el.value = el.max;
+}
+
 function selectPlan(key){
   clearInvalidMarks();
   selectedPlan = key;
@@ -548,6 +585,7 @@ function selectPlan(key){
   const hasSub = plan && plan.subOptions && plan.subOptions.length > 0;
   document.getElementById('subOptionField').classList.toggle('hideit', !hasSub);
   document.getElementById('arrivalField').classList.toggle('hideit', !hasSub);
+  applyArrivalWindow_();
   document.getElementById('almuerzoField').classList.toggle('hideit', !(plan && plan.allowsAlmuerzo));
 
   renderPlans();
@@ -570,7 +608,7 @@ function renderSubOptions(){
     div.innerHTML = '<div class="jname">'+label+'</div>' +
       (s.arrivalWindow ? '<div class="jwin">'+(LANG==='EN'?'Arrival':'Llegada')+' '+s.arrivalWindow+'</div>' : '') +
       '<div class="jcap" id="cap_'+s.key+'"></div>';
-    div.onclick = () => { selectedSubOption = s.key; renderSubOptions(); checkAvailability(); };
+    div.onclick = () => { selectedSubOption = s.key; renderSubOptions(); applyArrivalWindow_(); checkAvailability(); };
     box.appendChild(div);
   });
   checkAvailability();
@@ -786,6 +824,7 @@ async function submitReservation(){
   const wa = waCountry + waNumber;
   const fecha = document.getElementById('f_fecha').value;
   const req = document.getElementById('f_req').value.trim();
+  clampArrival_();
   const arrival = document.getElementById('f_arrival').value.trim();
   const ackAccepted = document.getElementById('f_ack').checked;
   const waiverAccepted = document.getElementById('f_waiver').checked;
