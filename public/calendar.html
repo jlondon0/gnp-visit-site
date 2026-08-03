@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: calendar v2.28.0 · 2026-08-01 -->
+<!-- GNP-BUILD: calendar v2.28.1 · 2026-08-01 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -52,6 +52,9 @@ a{color:inherit;}
 .day.limited{background:#FCEFDA;color:#8A5A16;cursor:pointer;}
 .day.full{background:#FBE5EA;color:#A3274C;}
 .day.disabled{background:#F6F2E8;color:#C9C2AE;cursor:default;}
+.day.unknown{background:#EDEDE6;color:#4A5A50;cursor:pointer;}
+.cal-degraded{text-align:center;font-size:.8rem;color:#8A5A16;background:#FCEFDA;border-radius:10px;padding:10px 12px;margin-bottom:12px;}
+.cal-degraded a{color:#1F5C3A;font-weight:600;text-decoration:underline;}
 .day.today::after{content:'';position:absolute;bottom:5px;width:4px;height:4px;border-radius:50%;background:currentColor;opacity:.6;}
 .day:active.open, .day:active.limited{transform:scale(.94);}
 
@@ -133,6 +136,7 @@ const I18N = {
     sub: 'Elige un día disponible para ir directo a la solicitud de reserva.',
     legOpen: 'Disponible', legLimited: 'Últimos cupos', legFull: 'Agotado',
     foot: '¿Preguntas?', loading: 'Cargando disponibilidad...',
+    degraded: 'No pudimos cargar la disponibilidad en vivo. Puedes elegir una fecha y enviar tu solicitud igualmente.', retry: 'Reintentar',
     minDays: 'Requiere mínimo {n} días de antelación. Los días grises no están disponibles para reservar en línea.',
     weekdays: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
     months: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
@@ -142,6 +146,7 @@ const I18N = {
     sub: 'Pick an open day to jump straight to the reservation request.',
     legOpen: 'Available', legLimited: 'Almost full', legFull: 'Fully booked',
     foot: 'Questions?', loading: 'Loading availability...',
+    degraded: 'We could not load live availability. You can still pick a date and send your request.', retry: 'Retry',
     minDays: 'Requires at least {n} days advance notice. Gray days cannot be booked online.',
     weekdays: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     months: ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -198,9 +203,13 @@ async function renderMonth(){
   const isCurrentMonth = (viewYear === today.getFullYear() && viewMonth === today.getMonth());
   document.getElementById('prevBtn').disabled = isCurrentMonth;
 
-  let data;
+  let data, degraded = false;
   try { data = await fetchMonth(viewYear, viewMonth); }
-  catch(err){ document.getElementById('calBody').innerHTML = '<div class="loading">'+String(err.message||err)+'</div>'; return; }
+  catch(err){
+    console.warn('calendar availability failed; degraded mode:', (err && err.message) || err);
+    degraded = true;
+    data = { days: {}, minDaysAdvance: 7 };
+  }
 
   const minAdvance = data.minDaysAdvance != null ? data.minDaysAdvance : 7;
   const minDate = new Date(today); minDate.setDate(minDate.getDate() + Number(minAdvance || 0));
@@ -216,11 +225,13 @@ async function renderMonth(){
     const info = data.days ? data.days[ds] : null;
     const isTooSoon = cellDate < minDate;
     const isPast = cellDate < today;
+    const unknown = !info;
     let cls = 'day';
-    if (isPast || isTooSoon || !info) cls += ' disabled';
+    if (isPast || isTooSoon) cls += ' disabled';
+    else if (unknown) cls += degraded ? ' unknown' : ' disabled';
     else cls += ' ' + info.status;
     if (cellDate.getTime() === today.getTime()) cls += ' today';
-    const clickable = !isPast && !isTooSoon && info && info.status !== 'full';
+    const clickable = !isPast && !isTooSoon && ((info && info.status !== 'full') || (unknown && degraded));
     let title = '';
     if (info && info.remaining && (info.status === 'open' || info.status === 'limited')) {
       const parts = Object.keys(info.remaining).map(k => {
@@ -231,7 +242,8 @@ async function renderMonth(){
     }
     html += '<div class="'+cls+'"'+(title ? ' title="'+title+'"' : '')+(clickable ? ' onclick="goBook(\''+ds+'\')"' : '')+'>'+d+'</div>';
   }
-  document.getElementById('calBody').innerHTML = '<div class="grid">' + html + '</div>';
+  const notice = degraded ? '<div class="cal-degraded">' + t.degraded + ' <a href="#" onclick="renderMonth();return false;">' + t.retry + '</a></div>' : '';
+  document.getElementById('calBody').innerHTML = notice + '<div class="grid">' + html + '</div>';
   document.getElementById('dateHint').textContent = t.minDays.replace('{n}', minAdvance);
 
   // Warm the cache for the neighbouring months so navigation feels instant.
