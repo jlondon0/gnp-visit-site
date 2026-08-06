@@ -920,7 +920,7 @@ loadConfig();
   <button id="gnpChatBtn" aria-label="Chat">
     <img src="https://gnp.guayacanpreserve.com/logo-icon.png" alt="Guayacán">
   </button>
-  <div id="gnpChatPanel" hidden>
+  <div id="gnpChatPanel" hidden style="display:none">
     <div class="gc-head">
       <img src="https://gnp.guayacanpreserve.com/logo-icon.png" alt="">
       <div><div class="gc-title">Guayacán</div><div class="gc-sub" id="gcSub">Asistente · Assistant</div></div>
@@ -973,7 +973,7 @@ loadConfig();
   function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
   function linkify(s){return s.replace(/(https?:\/\/[^\s]+)/g,function(u){return '<a href="'+u+'" target="_blank" rel="noopener" style="color:#1F5C3A;font-weight:600">'+u.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>';});}
   function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); if(role==='user'){d.textContent=txt;}else{d.innerHTML=linkify(esc(txt));} msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
-  function open(){ panel.hidden=false; btn.style.display='none'; text.focus();
+  function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; text.focus();
     document.getElementById('gcSub').textContent = EN()?'Assistant':'Asistente';
     document.getElementById('gcWaTxt').textContent = EN()?'Chat on WhatsApp':'Escríbenos por WhatsApp';
     text.placeholder = EN()?'Ask about your visit…':'Pregúntanos sobre tu visita…';
@@ -985,7 +985,7 @@ loadConfig();
       chips.forEach(function(c){ var b=document.createElement('button'); b.className='gc-chip'; b.textContent=c; b.onclick=function(){ text.value=c; ask(); }; chipsEl.appendChild(b); });
       bubble('assistant', EN()?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?'); }
   }
-  function shut(){ panel.hidden=true; btn.style.display='flex'; }
+  function shut(){ panel.style.display='none'; panel.hidden=true; btn.style.display='flex'; }
   btn.onclick=open; close.onclick=shut;
   async function ask(){
     var q=text.value.trim(); if(!q) return; text.value=''; var ch=document.getElementById('gcChips'); if(ch) ch.innerHTML='';
