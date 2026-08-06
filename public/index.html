@@ -981,10 +981,10 @@ loadConfig();
 }
 /* ---------- mobile glass sheet ---------- */
 @media (max-width:560px){
-  #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:100%;height:auto;max-height:min(72vh,560px);max-height:min(72dvh,560px);
-    background:linear-gradient(to top, rgba(251,246,236,.93) 0%, rgba(251,246,236,.82) 60%, rgba(251,246,236,.42) 82%, rgba(251,246,236,0) 100%);
-    backdrop-filter:blur(14px) saturate(1.05);-webkit-backdrop-filter:blur(14px) saturate(1.05);
-    border:0;border-radius:0;box-shadow:none;overflow:hidden;padding-bottom:max(env(safe-area-inset-bottom,0px),8px)}
+  #gnpChatPanel{left:12px;right:12px;top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:auto;max-width:none;height:auto;max-height:min(70vh,540px);max-height:min(70dvh,540px);
+    background:linear-gradient(to top, rgba(251,246,236,.94) 0%, rgba(251,246,236,.86) 62%, rgba(251,246,236,.52) 84%, rgba(251,246,236,.18) 100%);
+    backdrop-filter:blur(16px) saturate(1.05);-webkit-backdrop-filter:blur(16px) saturate(1.05);
+    border:1px solid rgba(255,255,255,.35);border-radius:20px;box-shadow:0 18px 50px -18px rgba(0,0,0,.45);overflow:hidden;padding-bottom:8px}
   .gc-msgs{flex:0 1 auto}
   .gc-head{padding:12px 16px 2px;color:#142A20}
   .gc-head img{width:26px;height:26px}
