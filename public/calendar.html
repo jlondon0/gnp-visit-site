@@ -345,7 +345,7 @@ function goBook(ds){
 }
 /* ---------- mobile glass sheet ---------- */
 @media (max-width:560px){
-  #gnpChatPanel{left:12px;right:12px;top:auto;bottom:calc(12px + env(safe-area-inset-bottom,0px));width:auto;max-width:none;height:auto;max-height:min(70vh,540px);max-height:min(70dvh,540px);
+  #gnpChatPanel{left:22px;right:22px;top:auto;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:auto;max-width:none;height:auto;max-height:min(70vh,540px);max-height:min(70dvh,540px);
     background:linear-gradient(to top, rgba(251,246,236,.94) 0%, rgba(251,246,236,.86) 62%, rgba(251,246,236,.52) 84%, rgba(251,246,236,.18) 100%);
     backdrop-filter:blur(16px) saturate(1.05);-webkit-backdrop-filter:blur(16px) saturate(1.05);
     border:1px solid rgba(255,255,255,.35);border-radius:20px;box-shadow:0 18px 50px -18px rgba(0,0,0,.45);overflow:hidden;padding-bottom:8px}
@@ -368,7 +368,7 @@ function goBook(ds){
       text=document.getElementById('gcText'), send=document.getElementById('gcSend'),
       closeBtn=document.getElementById('gcClose'), API=root.getAttribute('data-api');
   var API_BASE = location.hostname==='guayacanpreserve.com' ? '' : 'https://guayacanpreserve.com';
-  var history=[], started=false, sending=false;
+  var history=[], started=false, sending=false, lastLang=null;
   function EN(){ return (document.documentElement.lang||'en').toLowerCase().indexOf('es')!==0; }
   function esc(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
   function md(s){ s=esc(s);
@@ -389,6 +389,9 @@ function goBook(ds){
     document.getElementById('gcWaTxt').textContent = en?'Chat on WhatsApp':'Escríbenos por WhatsApp';
     text.placeholder = en?'Ask about your visit…':'Pregúntanos sobre tu visita…';
     document.getElementById('gcWa').href='https://wa.me/573102915558?text='+encodeURIComponent(en?'Hello, I have a question about Guayacán.':'Hola, tengo una pregunta sobre Guayacán.');
+    var langNow = en?'EN':'ES';
+    if(started && lastLang && lastLang!==langNow){ msgs.innerHTML=''; history=[]; started=false; }
+    lastLang = langNow;
     if(!started){ started=true;
       var chipsEl=document.getElementById('gcChips');
       var chips=en?['Prices','Sessions','What birds','How to book']:['Precios','Jornadas','Qué aves','Cómo reservar'];
