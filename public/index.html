@@ -948,7 +948,7 @@ loadConfig();
 @media (prefers-reduced-motion:reduce){#gnpChatBtn.gc-fly,#gnpChatBtn.gc-fly .gc-wing{animation:none}}
 #gnpChatPanel{position:fixed;right:18px;bottom:18px;z-index:10000;width:min(380px,calc(100vw - 28px));height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;font-family:'Inter',system-ui,sans-serif;animation:gcIn .2s ease}
 @keyframes gcIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
-@media (max-width:560px){#gnpChatPanel{left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));top:auto;width:auto;height:min(56dvh,460px)}#gnpChatBtn{right:14px;bottom:calc(82px + env(safe-area-inset-bottom))}}
+@media (max-width:560px){#gnpChatPanel{left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));top:auto;width:auto;height:min(56dvh,460px)}#gnpChatBtn{right:16px;bottom:calc(90px + env(safe-area-inset-bottom))}}
 .gc-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#142A20;color:#FBF6EC}
 .gc-head img{width:30px;height:30px;object-fit:contain}
 .gc-title{font-weight:600;font-size:1.05rem;font-family:Georgia,'Times New Roman',serif;letter-spacing:.2px}
@@ -996,12 +996,10 @@ loadConfig();
       chips.forEach(function(c){ var b=document.createElement('button'); b.className='gc-chip'; b.textContent=c; b.onclick=function(){ text.value=c; ask(); }; chipsEl.appendChild(b); });
       bubble('assistant', EN()?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?'); }
   }
-  function shut(){ panel.style.display='none'; panel.hidden=true; btn.style.display='flex'; fitBtn(); }
+  function shut(){ panel.style.display='none'; panel.hidden=true; btn.style.display='flex'; }
   btn.onclick=open; close.onclick=shut; btn.classList.add('gc-fly');
   function fitVV(){ if(panel.hidden||panel.style.display==='none') return; var vv=window.visualViewport; if(!vv||window.innerWidth>560){ panel.style.top=''; panel.style.height=''; panel.style.bottom=''; return; } var kb=window.innerHeight-(vv.height+vv.offsetTop); if(kb>120){ var H=Math.min(vv.height-12,460); var top=Math.max(vv.offsetTop+8, vv.offsetTop+vv.height-H-8); panel.style.top=top+'px'; panel.style.height=H+'px'; panel.style.bottom='auto'; msgs.scrollTop=msgs.scrollHeight; } else { panel.style.top=''; panel.style.height=''; panel.style.bottom=''; } }
-  function fitBtn(){ var vv=window.visualViewport; if(!vv||window.innerWidth>560){ btn.style.bottom=''; return; } var below=Math.max(0, window.innerHeight-(vv.height+vv.offsetTop)); btn.style.bottom=(below+18)+'px'; }
-  if(window.visualViewport){ var _vv=window.visualViewport; ['resize','scroll'].forEach(function(ev){ _vv.addEventListener(ev,function(){ fitVV(); fitBtn(); }); }); }
-  fitBtn(); setTimeout(fitBtn,300); window.addEventListener('load',fitBtn);
+  if(window.visualViewport){ ['resize','scroll'].forEach(function(ev){ window.visualViewport.addEventListener(ev,fitVV); }); }
   async function ask(){
     var q=text.value.trim(); if(!q) return; text.value=''; var ch=document.getElementById('gcChips'); if(ch) ch.innerHTML='';
     bubble('user',q); history.push({role:'user',content:q});
