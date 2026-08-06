@@ -285,7 +285,7 @@ function goBook(ds){
   <div id="gnpChatPanel" role="dialog" aria-modal="false" aria-label="Guayacan assistant" hidden style="display:none">
     <div class="gc-head">
       <img src="https://guayacanpreserve.com/bird-body.png" alt=""/>
-      <div class="gc-headtxt"><div class="gc-title">Guayac\u00e1n</div><div class="gc-sub" id="gcSub">Asistente</div></div>
+      <div class="gc-headtxt"><div class="gc-title">Guayacán</div><div class="gc-sub" id="gcSub">Asistente</div></div>
       <button id="gcClose" aria-label="Close chat">&times;</button>
     </div>
     <div class="gc-msgs" id="gcMsgs"></div>
@@ -338,17 +338,19 @@ function goBook(ds){
 .gc-wa svg{width:15px;height:15px;fill:#25D366}
 /* ---------- desktop card ---------- */
 @media (min-width:561px){
-  #gnpChatPanel{right:18px;bottom:18px;width:380px;height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4)}
+  #gnpChatPanel{right:18px;bottom:18px;width:380px;height:auto;max-height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4)}
   .gc-head{padding:14px 16px;background:#142A20;color:#FBF6EC}
   .gc-title{font-size:1.02rem}
   .gc-input{border-top:1px solid rgba(20,42,32,.08)}
+  .gc-msgs{max-height:420px}
 }
 /* ---------- mobile glass sheet ---------- */
 @media (max-width:560px){
-  #gnpChatPanel{left:0;right:auto;top:auto;bottom:0;width:100vw;max-width:100vw;height:min(64vh,500px);height:min(64dvh,500px);
-    background:linear-gradient(to top, rgba(251,246,236,.90) 0%, rgba(251,246,236,.78) 58%, rgba(251,246,236,.42) 80%, rgba(251,246,236,0) 100%);
+  #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;height:auto;max-height:min(72vh,560px);max-height:min(72dvh,560px);
+    background:linear-gradient(to top, rgba(251,246,236,.92) 0%, rgba(251,246,236,.80) 60%, rgba(251,246,236,.40) 82%, rgba(251,246,236,0) 100%);
     backdrop-filter:blur(14px) saturate(1.05);-webkit-backdrop-filter:blur(14px) saturate(1.05);
     border:0;border-radius:0;box-shadow:none;overflow-x:hidden;padding-bottom:max(env(safe-area-inset-bottom,0px),8px)}
+  .gc-msgs{flex:0 1 auto;max-height:46vh}
   .gc-head{padding:12px 16px 2px;color:#142A20}
   .gc-head img{width:26px;height:26px}
   .gc-title{font-size:1rem}
@@ -377,23 +379,23 @@ function goBook(ds){
     return s; }
   function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); if(role==='user'){ d.textContent=txt; } else { d.innerHTML=md(txt); } msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
   function isOpen(){ return panel.style.display!=='none' && !panel.hidden; }
-  function fitVV(){ if(!isOpen()) return; var vv=window.visualViewport; if(!vv||window.innerWidth>560){ panel.style.top=''; panel.style.height=''; panel.style.bottom=''; return; }
+  function fitVV(){ if(!isOpen()) return; var vv=window.visualViewport; if(!vv||window.innerWidth>560){ panel.style.top=''; panel.style.maxHeight=''; panel.style.bottom=''; return; }
     var kb=window.innerHeight-(vv.height+vv.offsetTop);
     if(kb>120){ var H=Math.min(vv.height-10,440); var top=Math.max(vv.offsetTop+6, vv.offsetTop+vv.height-H-4);
-      panel.style.top=top+'px'; panel.style.height=H+'px'; panel.style.bottom='auto'; msgs.scrollTop=msgs.scrollHeight;
-    } else { panel.style.top=''; panel.style.height=''; panel.style.bottom=''; } }
+      panel.style.top=top+'px'; panel.style.maxHeight=H+'px'; panel.style.bottom='auto'; msgs.scrollTop=msgs.scrollHeight;
+    } else { panel.style.top=''; panel.style.maxHeight=''; panel.style.bottom=''; } }
   function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; btn.classList.remove('gc-fly');
     var en=EN();
     document.getElementById('gcSub').textContent = en?'Assistant':'Asistente';
-    document.getElementById('gcWaTxt').textContent = en?'Chat on WhatsApp':'Escr\u00edbenos por WhatsApp';
-    text.placeholder = en?'Ask about your visit\u2026':'Preg\u00fantanos sobre tu visita\u2026';
-    document.getElementById('gcWa').href='https://wa.me/573102915558?text='+encodeURIComponent(en?'Hello, I have a question about Guayac\u00e1n.':'Hola, tengo una pregunta sobre Guayac\u00e1n.');
+    document.getElementById('gcWaTxt').textContent = en?'Chat on WhatsApp':'Escríbenos por WhatsApp';
+    text.placeholder = en?'Ask about your visit…':'Pregúntanos sobre tu visita…';
+    document.getElementById('gcWa').href='https://wa.me/573102915558?text='+encodeURIComponent(en?'Hello, I have a question about Guayacán.':'Hola, tengo una pregunta sobre Guayacán.');
     if(!started){ started=true;
       var chipsEl=document.getElementById('gcChips');
-      var chips=en?['Prices','Sessions','What birds','How to book']:['Precios','Jornadas','Qu\u00e9 aves','C\u00f3mo reservar'];
+      var chips=en?['Prices','Sessions','What birds','How to book']:['Precios','Jornadas','Qué aves','Cómo reservar'];
       chipsEl.innerHTML='';
       chips.forEach(function(c){ var b=document.createElement('button'); b.className='gc-chip'; b.textContent=c; b.onclick=function(){ text.value=c; ask(); }; chipsEl.appendChild(b); });
-      bubble('assistant', en?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'\u00a1Hola! Te ayudo con jornadas, precios, qu\u00e9 aves podr\u00edas ver y c\u00f3mo reservar. \u00bfQu\u00e9 te gustar\u00eda saber?');
+      bubble('assistant', en?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?');
     }
     fitVV();
     if(window.innerWidth>560) text.focus();
@@ -409,15 +411,15 @@ function goBook(ds){
     text.value='';
     var ch=document.getElementById('gcChips'); if(ch) ch.innerHTML='';
     bubble('user',q); history.push({role:'user',content:q});
-    var t=document.createElement('div'); t.className='gc-typing'; t.textContent='\u2026'; msgs.appendChild(t); msgs.scrollTop=msgs.scrollHeight;
+    var t=document.createElement('div'); t.className='gc-typing'; t.textContent='…'; msgs.appendChild(t); msgs.scrollTop=msgs.scrollHeight;
     sending=true; send.disabled=true;
     try{
       var r=await fetch(API_BASE+API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
       var d=await r.json(); t.remove();
-      if(d.rate_limited){ bubble('assistant', EN()?'We are getting a lot of questions right now \u2014 please tap WhatsApp below and our team will help you directly.':'Estamos recibiendo muchas preguntas ahora \u2014 toca WhatsApp abajo y nuestro equipo te ayuda directamente.'); }
+      if(d.rate_limited){ bubble('assistant', EN()?'We are getting a lot of questions right now — please tap WhatsApp below and our team will help you directly.':'Estamos recibiendo muchas preguntas ahora — toca WhatsApp abajo y nuestro equipo te ayuda directamente.'); }
       else if(d.reply){ bubble('assistant',d.reply); history.push({role:'assistant',content:d.reply}); }
-      else { bubble('assistant', EN()?'I could not answer that just now \u2014 tap WhatsApp below and our team will help.':'No pude responder ahora \u2014 toca WhatsApp abajo y nuestro equipo te ayuda.'); }
-    }catch(e){ t.remove(); bubble('assistant', EN()?'Connection issue \u2014 please use WhatsApp below.':'Problema de conexi\u00f3n \u2014 usa WhatsApp abajo.'); }
+      else { bubble('assistant', EN()?'I could not answer that just now — tap WhatsApp below and our team will help.':'No pude responder ahora — toca WhatsApp abajo y nuestro equipo te ayuda.'); }
+    }catch(e){ t.remove(); bubble('assistant', EN()?'Connection issue — please use WhatsApp below.':'Problema de conexión — usa WhatsApp abajo.'); }
     sending=false; send.disabled=false;
   }
   send.addEventListener('click',ask);
