@@ -953,7 +953,13 @@ loadConfig();
   #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;height:min(62dvh,500px);
     background:linear-gradient(to top, rgba(251,246,236,.94) 55%, rgba(251,246,236,.72) 82%, rgba(251,246,236,0));
     backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
-    border:0;border-radius:0;box-shadow:none;padding-bottom:env(safe-area-inset-bottom)}
+    border:0;border-radius:0;box-shadow:none;overflow-x:hidden;padding-bottom:env(safe-area-inset-bottom)}
+  #gnpChatPanel,#gnpChatPanel *{box-sizing:border-box}
+  #gnpChatPanel .gc-input{width:100%;gap:10px}
+  #gnpChatPanel #gcText{min-width:0;flex:1 1 auto}
+  #gnpChatPanel #gcSend{flex:0 0 42px}
+  #gnpChatPanel .gc-chips{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
+  #gnpChatPanel .gc-chip{flex:0 0 auto}
   .gc-head{background:transparent;color:#142A20;padding:10px 16px 2px}
   .gc-head img{width:26px;height:26px}
   .gc-title{font-size:1rem}
