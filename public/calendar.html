@@ -301,7 +301,8 @@ function goBook(ds){
 </div>
 <style>
 /* ---------- shared ---------- */
-#gnpChat,#gnpChat *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{overflow-x:hidden;max-width:100%}
+#gnpChat,#gnpChat *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;max-width:100%}
 #gnpChatBtn{position:fixed;right:16px;bottom:calc(90px + env(safe-area-inset-bottom,0px));z-index:2147483000;width:70px;height:70px;background:none;border:0;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;filter:drop-shadow(0 5px 9px rgba(0,0,0,.32))}
 #gnpChatBtn:hover{transform:scale(1.08)}
 #gnpChatBtn .gc-bird{position:relative;width:70px;height:70px;pointer-events:none}
@@ -325,9 +326,8 @@ function goBook(ds){
 .gc-u{align-self:flex-end;background:#E8B23D;color:#142A20;border-bottom-right-radius:5px;box-shadow:0 2px 10px rgba(20,42,32,.08)}
 .gc-b a{color:#1F5C3A;font-weight:600}
 .gc-typing{align-self:flex-start;color:#6B7568;font-size:.9rem;padding:4px 6px}
-.gc-chips{display:flex;gap:8px;padding:0 14px 10px;flex:0 0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.gc-chips::-webkit-scrollbar{display:none}
-.gc-chip{flex:0 0 auto;background:#fff;border:1px solid #D8D0BC;color:#15201A;border-radius:999px;padding:8px 14px;font-size:.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(20,42,32,.08)}
+.gc-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 14px 10px;flex:0 0 auto}
+.gc-chip{flex:0 1 auto;background:#fff;border:1px solid #D8D0BC;color:#15201A;border-radius:999px;padding:8px 14px;font-size:.85rem;cursor:pointer;box-shadow:0 2px 8px rgba(20,42,32,.08)}
 .gc-chip:active{background:#F1EAD8}
 .gc-input{display:flex;align-items:center;gap:10px;padding:10px 14px;flex:0 0 auto;width:100%}
 #gcText{flex:1 1 auto;min-width:0;border:1px solid #D8D0BC;border-radius:999px;padding:11px 16px;font-size:16px;outline:none;background:#fff;color:#15201A;box-shadow:0 2px 10px rgba(20,42,32,.10)}
@@ -346,20 +346,20 @@ function goBook(ds){
 }
 /* ---------- mobile glass sheet ---------- */
 @media (max-width:560px){
-  #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:none;height:auto;max-height:min(72vh,560px);max-height:min(72dvh,560px);
-    background:linear-gradient(to top, rgba(251,246,236,.92) 0%, rgba(251,246,236,.80) 60%, rgba(251,246,236,.40) 82%, rgba(251,246,236,0) 100%);
+  #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;max-width:100%;height:auto;max-height:min(72vh,560px);max-height:min(72dvh,560px);
+    background:linear-gradient(to top, rgba(251,246,236,.93) 0%, rgba(251,246,236,.82) 60%, rgba(251,246,236,.42) 82%, rgba(251,246,236,0) 100%);
     backdrop-filter:blur(14px) saturate(1.05);-webkit-backdrop-filter:blur(14px) saturate(1.05);
-    border:0;border-radius:0;box-shadow:none;overflow-x:hidden;padding-bottom:max(env(safe-area-inset-bottom,0px),8px)}
-  .gc-msgs{flex:0 1 auto;max-height:46vh}
+    border:0;border-radius:0;box-shadow:none;overflow:hidden;padding-bottom:max(env(safe-area-inset-bottom,0px),8px)}
+  .gc-msgs{flex:0 1 auto}
   .gc-head{padding:12px 16px 2px;color:#142A20}
   .gc-head img{width:26px;height:26px}
   .gc-title{font-size:1rem}
   .gc-sub{display:none}
   #gcClose{background:rgba(20,42,32,.07);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:1.4rem}
-  .gc-msgs{padding:10px 16px}
-  .gc-chips{padding:0 16px 10px}
-  .gc-input{padding:10px 16px}
-  #gnpChatPanel .gc-b{max-width:80%}
+  .gc-msgs{padding:10px 14px}
+  .gc-chips{padding:0 14px 10px}
+  .gc-input{padding:10px 14px}
+  #gnpChatPanel .gc-b{max-width:84%}
 }
 </style>
 <script>
