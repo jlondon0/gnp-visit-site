@@ -312,7 +312,26 @@ function goBook(ds){
 @media (prefers-reduced-motion:reduce){#gnpChatBtn.gc-fly,#gnpChatBtn.gc-fly .gc-wing{animation:none}}
 #gnpChatPanel{position:fixed;right:18px;bottom:18px;z-index:10000;width:min(380px,calc(100vw - 28px));height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;font-family:'Inter',system-ui,sans-serif;animation:gcIn .2s ease}
 @keyframes gcIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
-@media (max-width:560px){#gnpChatPanel{left:10px;right:10px;bottom:calc(12px + env(safe-area-inset-bottom));top:auto;width:auto;height:min(56dvh,460px)}#gnpChatBtn{right:16px;bottom:calc(90px + env(safe-area-inset-bottom))}}
+
+@media (max-width:560px){
+  #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;height:min(62dvh,500px);
+    background:linear-gradient(to top, rgba(251,246,236,.94) 55%, rgba(251,246,236,.72) 82%, rgba(251,246,236,0));
+    backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+    border:0;border-radius:0;box-shadow:none;padding-bottom:env(safe-area-inset-bottom)}
+  .gc-head{background:transparent;color:#142A20;padding:10px 16px 2px}
+  .gc-head img{width:26px;height:26px}
+  .gc-title{font-size:1rem}
+  .gc-sub{display:none}
+  #gcClose{color:#142A20;font-size:1.7rem;background:rgba(251,246,236,.75);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+  .gc-msgs{padding:8px 14px}
+  .gc-a{box-shadow:0 2px 10px rgba(20,42,32,.10)}
+  .gc-u{box-shadow:0 2px 10px rgba(20,42,32,.10)}
+  .gc-chip{box-shadow:0 2px 8px rgba(20,42,32,.10)}
+  .gc-input{border-top:0;padding:8px 14px}
+  #gcText{box-shadow:0 2px 10px rgba(20,42,32,.12)}
+  .gc-wa{border-top:0;padding:6px 0 10px}
+  #gnpChatBtn{right:16px;bottom:calc(90px + env(safe-area-inset-bottom))}
+}
 .gc-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#142A20;color:#FBF6EC}
 .gc-head img{width:30px;height:30px;object-fit:contain}
 .gc-title{font-weight:600;font-size:1.05rem;font-family:Georgia,'Times New Roman',serif;letter-spacing:.2px}
