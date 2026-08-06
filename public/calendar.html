@@ -27,8 +27,8 @@ a{color:inherit;}
 .brand{text-align:center;max-width:640px;margin:0 auto;}
 .brand img{width:140px;height:auto;display:block;margin:0 auto 14px;}
 .lang-toggle{position:absolute;top:20px;right:20px;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
-.lang-toggle button{background:none;border:0;color:var(--cream);opacity:.55;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;padding:7px 14px;cursor:pointer;transition:opacity .15s,background .15s;}
-.lang-toggle button.active{opacity:1;background:rgba(251,246,236,.1);}
+.lang-toggle button{background:none;border:0;color:var(--cream);opacity:.55;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;padding:7px 14px;cursor:pointer;transition:opacity .15s,background .15s;;font-size:1.05rem;line-height:1;filter:grayscale(1);opacity:.5}
+.lang-toggle button.active{opacity:1;background:rgba(251,246,236,.1);;filter:none;opacity:1}
 .back-link{position:absolute;top:24px;left:20px;font-size:.78rem;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:4px;}
 .hero-copy{max-width:640px;margin:10px auto 0;text-align:center;}
 .eyebrow{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;}
@@ -77,8 +77,8 @@ a{color:inherit;}
 <div class="hero">
   <a class="back-link" href="index.html" id="t-back">&larr; Reservar</a>
   <div class="lang-toggle" role="group" aria-label="Language">
-    <button id="langEs" class="active" onclick="setLang('ES')">ES</button>
-    <button id="langEn" onclick="setLang('EN')">EN</button>
+    <button id="langEs" class="active" onclick="setLang('ES')" aria-label="Español" title="Español">🇪🇸</button>
+    <button id="langEn" onclick="setLang('EN')" aria-label="English" title="English">🇬🇧</button>
   </div>
   <div class="brand">
     <img src="logo.png" alt="Guayacan Natural Preserve">
@@ -124,7 +124,7 @@ const CONFIG_LABELS = {
   TARDE:    { ES: 'Tarde',    EN: 'Afternoon' }
 };
 
-let LANG = 'ES';
+let LANG = ((navigator.language||'es').toLowerCase().indexOf('en')===0 ? 'EN' : 'ES');
 let viewYear, viewMonth; // viewMonth 0-indexed
 const today = new Date();
 today.setHours(0,0,0,0);
@@ -445,6 +445,8 @@ function goBook(ds){
   send.addEventListener('click',ask);
   text.addEventListener('keydown',function(e){ if(e.key==='Enter'){ e.preventDefault(); ask(); } });
 })();
+
+try{ setLang(LANG); }catch(e){}
 </script>
 <!-- /GNP-CHAT-WIDGET -->
 </body>
