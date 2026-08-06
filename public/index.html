@@ -940,7 +940,12 @@ loadConfig();
 <style>
 #gnpChatBtn{position:fixed;right:16px;bottom:16px;z-index:9999;width:70px;height:70px;background:none;border:0;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;filter:drop-shadow(0 5px 9px rgba(0,0,0,.32))}
 #gnpChatBtn:hover{transform:scale(1.08)}
-#gnpChatBtn img{width:70px;height:70px;object-fit:contain}
+#gnpChatBtn img{width:70px;height:70px;object-fit:contain;transform-origin:58% 68%}
+#gnpChatBtn.gc-fly{animation:gcBob 1.8s ease-in-out infinite}
+#gnpChatBtn.gc-fly img{animation:gcFlap .2s ease-in-out infinite}
+@keyframes gcBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+@keyframes gcFlap{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
+@media (prefers-reduced-motion:reduce){#gnpChatBtn.gc-fly,#gnpChatBtn.gc-fly img{animation:none}}
 #gnpChatPanel{position:fixed;right:18px;bottom:18px;z-index:10000;width:min(380px,calc(100vw - 28px));height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;font-family:'Inter',system-ui,sans-serif;animation:gcIn .2s ease}
 @keyframes gcIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 .gc-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#142A20;color:#FBF6EC}
@@ -978,7 +983,7 @@ loadConfig();
     s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
     return s; }
   function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); if(role==='user'){d.textContent=txt;}else{d.innerHTML=md(txt);} msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
-  function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; text.focus();
+  function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; btn.classList.remove('gc-fly'); text.focus();
     document.getElementById('gcSub').textContent = EN()?'Assistant':'Asistente';
     document.getElementById('gcWaTxt').textContent = EN()?'Chat on WhatsApp':'Escríbenos por WhatsApp';
     text.placeholder = EN()?'Ask about your visit…':'Pregúntanos sobre tu visita…';
@@ -991,7 +996,7 @@ loadConfig();
       bubble('assistant', EN()?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?'); }
   }
   function shut(){ panel.style.display='none'; panel.hidden=true; btn.style.display='flex'; }
-  btn.onclick=open; close.onclick=shut;
+  btn.onclick=open; close.onclick=shut; btn.classList.add('gc-fly');
   async function ask(){
     var q=text.value.trim(); if(!q) return; text.value=''; var ch=document.getElementById('gcChips'); if(ch) ch.innerHTML='';
     bubble('user',q); history.push({role:'user',content:q});
