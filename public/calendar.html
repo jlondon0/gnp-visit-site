@@ -291,6 +291,7 @@ function goBook(ds){
       <button id="gcClose" aria-label="Close">&times;</button>
     </div>
     <div class="gc-msgs" id="gcMsgs"></div>
+    <div class="gc-chips" id="gcChips"></div>
     <div class="gc-input">
       <input id="gcText" type="text" autocomplete="off" />
       <button id="gcSend" aria-label="Send">&#8593;</button>
@@ -320,6 +321,9 @@ function goBook(ds){
 #gcSend{width:38px;height:38px;border-radius:50%;border:0;background:#142A20;color:#FBF6EC;font-size:1.1rem;cursor:pointer}
 .gc-wa{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;background:#25D366;color:#fff;font-size:.85rem;font-weight:600;text-decoration:none}
 .gc-wa svg{width:16px;height:16px;fill:#fff}
+.gc-chips{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
+.gc-chip{background:#fff;border:1px solid #D8D0BC;color:#15201A;border-radius:999px;padding:6px 12px;font-size:.8rem;cursor:pointer}
+.gc-chip:hover{background:#F1EAD8}
 </style>
 <script>
 (function(){
@@ -330,24 +334,31 @@ function goBook(ds){
   var API_BASE = location.hostname==='guayacanpreserve.com' ? '' : 'https://guayacanpreserve.com';
   var history=[], started=false;
   function EN(){ return (document.documentElement.lang||'en').toLowerCase().indexOf('es')!==0; }
-  function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); d.textContent=txt; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
+  function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+  function linkify(s){return s.replace(/(https?:\/\/[^\s]+)/g,function(u){return '<a href="'+u+'" target="_blank" rel="noopener" style="color:#1F5C3A;font-weight:600">'+u.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>';});}
+  function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); if(role==='user'){d.textContent=txt;}else{d.innerHTML=linkify(esc(txt));} msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
   function open(){ panel.hidden=false; btn.style.display='none'; text.focus();
     document.getElementById('gcSub').textContent = EN()?'Assistant':'Asistente';
     document.getElementById('gcWaTxt').textContent = EN()?'Chat on WhatsApp':'Escríbenos por WhatsApp';
     text.placeholder = EN()?'Ask about your visit…':'Pregúntanos sobre tu visita…';
     document.getElementById('gcWa').href='https://wa.me/573102915558?text='+encodeURIComponent(EN()?'Hello, I have a question about Guayacán.':'Hola, tengo una pregunta sobre Guayacán.');
-    if(!started){ started=true; bubble('assistant', EN()?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?'); }
+    if(!started){ started=true;
+      var chipsEl=document.getElementById('gcChips');
+      var chips=EN()?['Prices','Sessions','What birds','How to book']:['Precios','Jornadas','Qu\u00e9 aves','C\u00f3mo reservar'];
+      chipsEl.innerHTML='';
+      chips.forEach(function(c){ var b=document.createElement('button'); b.className='gc-chip'; b.textContent=c; b.onclick=function(){ text.value=c; ask(); }; chipsEl.appendChild(b); });
+      bubble('assistant', EN()?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?'); }
   }
   function shut(){ panel.hidden=true; btn.style.display='flex'; }
   btn.onclick=open; close.onclick=shut;
   async function ask(){
-    var q=text.value.trim(); if(!q) return; text.value='';
+    var q=text.value.trim(); if(!q) return; text.value=''; var ch=document.getElementById('gcChips'); if(ch) ch.innerHTML='';
     bubble('user',q); history.push({role:'user',content:q});
     var t=document.createElement('div'); t.className='gc-typing'; t.textContent='…'; msgs.appendChild(t); msgs.scrollTop=msgs.scrollHeight;
     try{
       var r=await fetch(API_BASE+API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
       var d=await r.json(); t.remove();
-      if(d.reply){ bubble('assistant',d.reply); history.push({role:'assistant',content:d.reply}); }
+      if(d.rate_limited){ bubble('assistant', EN()?'We are getting a lot of questions right now \u2014 please tap WhatsApp below and our team will help you directly.':'Estamos recibiendo muchas preguntas ahora \u2014 toca WhatsApp abajo y nuestro equipo te ayuda directamente.'); } else if(d.reply){ bubble('assistant',d.reply); history.push({role:'assistant',content:d.reply}); }
       else { bubble('assistant', EN()?'I could not answer that just now — tap WhatsApp below and our team will help.':'No pude responder ahora — toca WhatsApp abajo y nuestro equipo te ayuda.'); }
     }catch(e){ t.remove(); bubble('assistant', EN()?'Connection issue — please use WhatsApp below.':'Problema de conexión — usa WhatsApp abajo.'); }
   }
