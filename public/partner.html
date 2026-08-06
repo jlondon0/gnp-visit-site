@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Guayacán · Partner</title>
+<!-- partner v2.29.0 -->
+<style>
+:root{--forest:#142A20;--cream:#FBF6EC;--gold:#E8B23D;--ink:#15201A;--line:#E4DAC6}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cream);color:var(--ink);font-family:'Inter',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:24px 16px}
+.wrap{width:100%;max-width:440px}
+.top{display:flex;align-items:center;gap:12px;margin-bottom:6px}
+.top img{width:46px;height:46px;object-fit:contain}
+.brand{font-family:Georgia,'Times New Roman',serif;font-size:1.5rem;font-weight:700;color:var(--forest)}
+.sub{color:#6B7568;font-size:.9rem;margin:0 0 20px}
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 10px 30px -18px rgba(0,0,0,.3)}
+.cat{display:inline-block;background:#F1EAD8;color:#7A5A16;border-radius:999px;padding:4px 12px;font-size:.78rem;font-weight:600;margin-bottom:16px}
+label{display:block;font-size:.82rem;font-weight:600;color:#3B463E;margin:14px 0 5px}
+input{width:100%;border:1px solid #D8D0BC;border-radius:10px;padding:11px 13px;font-size:.95rem;outline:none;background:#fff}
+input:focus{border-color:var(--gold)}
+button{width:100%;margin-top:20px;background:var(--forest);color:var(--cream);border:0;border-radius:999px;padding:13px;font-size:1rem;font-weight:600;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.msg{text-align:center;padding:40px 10px;color:#6B7568}
+.ok{background:#E7F3EA;color:#1F5C3A;border-radius:10px;padding:10px 12px;font-size:.86rem;text-align:center;margin-top:14px;display:none}
+.err{background:#FBE7E2;color:#9A3B22;border-radius:10px;padding:10px 12px;font-size:.86rem;text-align:center;margin-top:14px;display:none}
+.lang{float:right;font-size:.8rem;color:#6B7568;cursor:pointer;user-select:none}
+.foot{text-align:center;color:#9AA396;font-size:.72rem;margin-top:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="lang" id="lang">EN</span>
+  <div class="top"><img src="logo-icon.png" alt="Guayacán"/><span class="brand">Guayacán</span></div>
+  <p class="sub" id="sub">Perfil de socio · actualiza tus datos</p>
+  <div class="card" id="card"><div class="msg" id="loading">Cargando…</div>
+    <div id="form" style="display:none">
+      <span class="cat" id="cat"></span>
+      <label id="lName">Nombre</label><input id="name" maxlength="120"/>
+      <label id="lCompany">Empresa / Negocio</label><input id="company" maxlength="120"/>
+      <label id="lWhatsapp">WhatsApp</label><input id="whatsapp" maxlength="40" placeholder="+57 3XX XXX XXXX"/>
+      <label id="lLocation">Ubicación</label><input id="location" maxlength="160"/>
+      <label id="lWebsite">Sitio web</label><input id="website" maxlength="200" placeholder="https://"/>
+      <button id="save">Guardar</button>
+      <div class="ok" id="ok"></div><div class="err" id="err"></div>
+    </div>
+  </div>
+  <p class="foot">Guayacan Natural Preserve · RNT 273376</p>
+</div>
+<script>
+var API='https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+var TOKEN=new URLSearchParams(location.search).get('t')||'';
+var EN=false;
+var T={
+  es:{sub:'Perfil de socio · actualiza tus datos',loading:'Cargando…',name:'Nombre',company:'Empresa / Negocio',whatsapp:'WhatsApp',location:'Ubicación',website:'Sitio web',save:'Guardar',saving:'Guardando…',ok:'¡Guardado! Gracias.',err:'No se pudo guardar. Intenta de nuevo.',bad:'Enlace inválido o vencido. Escríbenos por WhatsApp.'},
+  en:{sub:'Partner profile · update your details',loading:'Loading…',name:'Name',company:'Company / Business',whatsapp:'WhatsApp',location:'Location',website:'Website',save:'Save',saving:'Saving…',ok:'Saved! Thank you.',err:'Could not save. Please try again.',bad:'Invalid or expired link. Please contact us on WhatsApp.'}
+};
+function t(){return EN?T.en:T.es;}
+function applyLang(){var x=t();document.getElementById('sub').textContent=x.sub;document.getElementById('lName').textContent=x.name;document.getElementById('lCompany').textContent=x.company;document.getElementById('lWhatsapp').textContent=x.whatsapp;document.getElementById('lLocation').textContent=x.location;document.getElementById('lWebsite').textContent=x.website;document.getElementById('save').textContent=x.save;document.getElementById('lang').textContent=EN?'ES':'EN';document.documentElement.lang=EN?'en':'es';}
+document.getElementById('lang').onclick=function(){EN=!EN;applyLang();};
+
+function show(el){document.getElementById('loading').style.display='none';document.getElementById('form').style.display=el?'block':'none';}
+function fail(){document.getElementById('loading').textContent=t().bad;}
+
+async function load(){
+  if(!TOKEN){fail();return;}
+  try{
+    var r=await fetch(API+'?action=partnerGet&token='+encodeURIComponent(TOKEN));
+    var j=await r.json();
+    if(!j.ok||!j.data){fail();return;}
+    var d=j.data;
+    document.getElementById('cat').textContent=d.category||'Partner';
+    document.getElementById('name').value=d.name||'';
+    document.getElementById('company').value=d.company||'';
+    document.getElementById('whatsapp').value=d.whatsapp||'';
+    document.getElementById('location').value=d.location||'';
+    document.getElementById('website').value=d.website||'';
+    show(true);
+  }catch(e){fail();}
+}
+document.getElementById('save').onclick=async function(){
+  var btn=document.getElementById('save'),ok=document.getElementById('ok'),err=document.getElementById('err');
+  ok.style.display='none';err.style.display='none';btn.disabled=true;btn.textContent=t().saving;
+  var payload={action:'partnerUpdate',token:TOKEN,
+    name:document.getElementById('name').value,company:document.getElementById('company').value,
+    whatsapp:document.getElementById('whatsapp').value,location:document.getElementById('location').value,
+    website:document.getElementById('website').value};
+  try{
+    var r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    var j=await r.json();
+    if(j.ok){ok.textContent=t().ok;ok.style.display='block';}else{err.textContent=t().err;err.style.display='block';}
+  }catch(e){err.textContent=t().err;err.style.display='block';}
+  btn.disabled=false;btn.textContent=t().save;
+};
+applyLang();load();
+</script>
+</body>
+</html>
