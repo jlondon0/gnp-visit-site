@@ -981,16 +981,19 @@ loadConfig();
 }
 /* ---------- mobile glass sheet ---------- */
 @media (max-width:560px){
-  #gnpChatPanel{left:0;right:0;top:auto;bottom:0;width:auto;height:min(64vh,500px);height:min(64dvh,500px);
-    background:linear-gradient(to top, rgba(251,246,236,.97) 0%, rgba(251,246,236,.97) 72%, rgba(251,246,236,.85) 88%, rgba(251,246,236,0) 100%);
-    backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-    border:0;border-radius:0;box-shadow:none;overflow-x:hidden;padding-bottom:max(env(safe-area-inset-bottom,0px),6px)}
+  #gnpChatPanel{left:0;right:auto;top:auto;bottom:0;width:100vw;max-width:100vw;height:min(64vh,500px);height:min(64dvh,500px);
+    background:linear-gradient(to top, rgba(251,246,236,.90) 0%, rgba(251,246,236,.78) 58%, rgba(251,246,236,.42) 80%, rgba(251,246,236,0) 100%);
+    backdrop-filter:blur(14px) saturate(1.05);-webkit-backdrop-filter:blur(14px) saturate(1.05);
+    border:0;border-radius:0;box-shadow:none;overflow-x:hidden;padding-bottom:max(env(safe-area-inset-bottom,0px),8px)}
   .gc-head{padding:12px 16px 2px;color:#142A20}
   .gc-head img{width:26px;height:26px}
   .gc-title{font-size:1rem}
   .gc-sub{display:none}
   #gcClose{background:rgba(20,42,32,.07);border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:1.4rem}
-  .gc-msgs{padding:10px 14px}
+  .gc-msgs{padding:10px 16px}
+  .gc-chips{padding:0 16px 10px}
+  .gc-input{padding:10px 16px}
+  #gnpChatPanel .gc-b{max-width:80%}
 }
 </style>
 <script>
