@@ -383,20 +383,38 @@ function goBook(ds){
     if(kb>120){ var H=Math.min(vv.height-10,440); var top=Math.max(vv.offsetTop+6, vv.offsetTop+vv.height-H-4);
       panel.style.top=top+'px'; panel.style.maxHeight=H+'px'; panel.style.bottom='auto'; msgs.scrollTop=msgs.scrollHeight;
     } else { panel.style.top=''; panel.style.maxHeight=''; panel.style.bottom=''; } }
-  function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; btn.classList.remove('gc-fly');
+  function renderChips(en){
+    var chipsEl=document.getElementById('gcChips');
+    var chips=en?['Prices','Sessions','What birds','How to book']:['Precios','Jornadas','Qué aves','Cómo reservar'];
+    chipsEl.innerHTML='';
+    chips.forEach(function(c){ var b=document.createElement('button'); b.className='gc-chip'; b.textContent=c; b.onclick=function(){ text.value=c; ask(); }; chipsEl.appendChild(b); });
+  }
+  function applyLang(){
     var en=EN();
     document.getElementById('gcSub').textContent = en?'Assistant':'Asistente';
     document.getElementById('gcWaTxt').textContent = en?'Chat on WhatsApp':'Escríbenos por WhatsApp';
     text.placeholder = en?'Ask about your visit…':'Pregúntanos sobre tu visita…';
     document.getElementById('gcWa').href='https://wa.me/573102915558?text='+encodeURIComponent(en?'Hello, I have a question about Guayacán.':'Hola, tengo una pregunta sobre Guayacán.');
+    return en;
+  }
+  // Live language switch: the site's setLang() updates documentElement.lang
+  var _mo = new MutationObserver(function(){
+    var en=applyLang();
+    if(!isOpen()) return;
+    if(history.length===0){ msgs.innerHTML=''; renderChips(en);
+      bubble('assistant', en?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?');
+    } else if(document.getElementById('gcChips').children.length){ renderChips(en); }
+  });
+  _mo.observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
+
+  function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; btn.classList.remove('gc-fly');
+    var en=EN();
+    applyLang();
     var langNow = en?'EN':'ES';
     if(started && lastLang && lastLang!==langNow){ msgs.innerHTML=''; history=[]; started=false; }
     lastLang = langNow;
     if(!started){ started=true;
-      var chipsEl=document.getElementById('gcChips');
-      var chips=en?['Prices','Sessions','What birds','How to book']:['Precios','Jornadas','Qué aves','Cómo reservar'];
-      chipsEl.innerHTML='';
-      chips.forEach(function(c){ var b=document.createElement('button'); b.className='gc-chip'; b.textContent=c; b.onclick=function(){ text.value=c; ask(); }; chipsEl.appendChild(b); });
+      renderChips(en);
       bubble('assistant', en?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?');
     }
     fitVV();
