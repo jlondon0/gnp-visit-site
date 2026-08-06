@@ -915,31 +915,81 @@ loadConfig();
 </script>
   <!-- swl-credit -->
   <div class="swl-credit" style="font-size:10px;text-align:center;opacity:.55;padding:14px 12px 18px;letter-spacing:.3px">Developed in the US by sketchwithlight LLC</div>
-<!-- GNP-WHATSAPP-BUBBLE (Tier 1) -->
-<a id="gnpWa" href="https://wa.me/573102915558" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
-  <img src="logo-icon.png" alt="Guayacán">
-  <span class="gnpWa-wa" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 2.1.55 4.06 1.6 5.82L2 22l4.4-1.15a9.9 9.9 0 0 0 5.64 1.74h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm5.8 14.16c-.24.68-1.4 1.3-1.94 1.34-.5.04-.5.4-3.15-.66-2.65-1.06-4.34-3.76-4.47-3.94-.13-.18-1.07-1.42-1.07-2.71s.68-1.92.92-2.18c.24-.26.53-.33.7-.33l.5.01c.16.01.38-.06.59.45.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.18-.15.29-.29.45-.14.16-.3.36-.43.48-.14.14-.29.29-.12.57.17.28.76 1.25 1.63 2.02 1.12 1 2.06 1.31 2.35 1.46.29.14.46.12.63-.07.17-.19.73-.85.93-1.14.19-.29.38-.24.64-.14.26.09 1.66.78 1.95.93.29.14.48.21.55.33.07.12.07.68-.17 1.36z"/></svg></span>
-</a>
+<!-- GNP-CHAT-WIDGET -->
+<div id="gnpChat" data-api="/api/chat">
+  <button id="gnpChatBtn" aria-label="Chat">
+    <img src="https://gnp.guayacanpreserve.com/logo-icon.png" alt="Guayacán">
+  </button>
+  <div id="gnpChatPanel" hidden>
+    <div class="gc-head">
+      <img src="https://gnp.guayacanpreserve.com/logo-icon.png" alt="">
+      <div><div class="gc-title">Guayacán</div><div class="gc-sub" id="gcSub">Asistente · Assistant</div></div>
+      <button id="gcClose" aria-label="Close">&times;</button>
+    </div>
+    <div class="gc-msgs" id="gcMsgs"></div>
+    <div class="gc-input">
+      <input id="gcText" type="text" autocomplete="off" />
+      <button id="gcSend" aria-label="Send">&#8593;</button>
+    </div>
+    <a class="gc-wa" id="gcWa" href="https://wa.me/573102915558" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 2.1.55 4.06 1.6 5.82L2 22l4.4-1.15a9.9 9.9 0 0 0 5.64 1.74h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm5.8 14.16c-.24.68-1.4 1.3-1.94 1.34-.5.04-.5.4-3.15-.66-2.65-1.06-4.34-3.76-4.47-3.94-.13-.18-1.07-1.42-1.07-2.71s.68-1.92.92-2.18c.24-.26.53-.33.7-.33l.5.01c.16.01.38-.06.59.45.24.58.82 2 .89 2.14.07.14.12.31.02.5-.1.18-.15.29-.29.45-.14.16-.3.36-.43.48-.14.14-.29.29-.12.57.17.28.76 1.25 1.63 2.02 1.12 1 2.06 1.31 2.35 1.46.29.14.46.12.63-.07.17-.19.73-.85.93-1.14.19-.29.38-.24.64-.14.26.09 1.66.78 1.95.93.29.14.48.21.55.33.07.12.07.68-.17 1.36z"/></svg><span id="gcWaTxt">WhatsApp</span>
+    </a>
+  </div>
+</div>
 <style>
-#gnpWa{position:fixed;right:18px;bottom:18px;z-index:9999;width:60px;height:60px;border-radius:50%;background:#fff;box-shadow:0 8px 24px rgba(20,42,32,.28);display:flex;align-items:center;justify-content:center;border:2px solid #142A20;transition:transform .15s ease}
-#gnpWa:hover{transform:scale(1.06)}
-#gnpWa>img{width:42px;height:42px;object-fit:contain}
-#gnpWa .gnpWa-wa{position:absolute;right:-3px;bottom:-3px;width:24px;height:24px;border-radius:50%;background:#25D366;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
-#gnpWa .gnpWa-wa svg{width:14px;height:14px;fill:#fff}
-@media(max-width:520px){#gnpWa{width:54px;height:54px;right:14px;bottom:14px}#gnpWa>img{width:36px;height:36px}}
+#gnpChatBtn{position:fixed;right:18px;bottom:18px;z-index:9999;width:60px;height:60px;border-radius:50%;background:#fff;box-shadow:0 8px 24px rgba(20,42,32,.28);border:2px solid #142A20;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s}
+#gnpChatBtn:hover{transform:scale(1.06)}
+#gnpChatBtn img{width:42px;height:42px;object-fit:contain}
+#gnpChatPanel{position:fixed;right:18px;bottom:18px;z-index:10000;width:min(380px,calc(100vw - 28px));height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;font-family:'Inter',system-ui,sans-serif}
+.gc-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#142A20;color:#FBF6EC}
+.gc-head img{width:30px;height:30px;object-fit:contain}
+.gc-title{font-weight:600;font-size:.98rem}
+.gc-sub{font-size:.72rem;opacity:.7}
+#gcClose{margin-left:auto;background:none;border:0;color:#FBF6EC;font-size:1.5rem;cursor:pointer;line-height:1}
+.gc-msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
+.gc-b{max-width:82%;padding:9px 13px;border-radius:14px;font-size:.9rem;line-height:1.45;white-space:pre-wrap}
+.gc-a{align-self:flex-start;background:#fff;border:1px solid #ECE4D3;color:#15201A;border-bottom-left-radius:4px}
+.gc-u{align-self:flex-end;background:#E8B23D;color:#142A20;border-bottom-right-radius:4px}
+.gc-typing{align-self:flex-start;color:#6B7568;font-size:.85rem;padding:4px 6px}
+.gc-input{display:flex;gap:8px;padding:10px 12px;border-top:1px solid rgba(20,42,32,.1)}
+#gcText{flex:1;border:1px solid #D8D0BC;border-radius:999px;padding:9px 14px;font-size:.9rem;outline:none;background:#fff}
+#gcSend{width:38px;height:38px;border-radius:50%;border:0;background:#142A20;color:#FBF6EC;font-size:1.1rem;cursor:pointer}
+.gc-wa{display:flex;align-items:center;justify-content:center;gap:8px;padding:9px;background:#25D366;color:#fff;font-size:.85rem;font-weight:600;text-decoration:none}
+.gc-wa svg{width:16px;height:16px;fill:#fff}
 </style>
 <script>
 (function(){
-  var a=document.getElementById('gnpWa'), num='573102915558';
-  function sync(){
-    var en=(document.documentElement.lang||'es').toLowerCase().indexOf('en')===0;
-    var t=en?'Hello, I have a question about Guayacán Natural Preserve.':'Hola, tengo una pregunta sobre Guayacán Natural Preserve.';
-    a.href='https://wa.me/'+num+'?text='+encodeURIComponent(t);
-    a.title=en?'Questions? Chat with us on WhatsApp':'¿Preguntas? Escríbenos por WhatsApp';
+  var root=document.getElementById('gnpChat'), btn=document.getElementById('gnpChatBtn'),
+      panel=document.getElementById('gnpChatPanel'), msgs=document.getElementById('gcMsgs'),
+      text=document.getElementById('gcText'), send=document.getElementById('gcSend'),
+      close=document.getElementById('gcClose'), API=root.getAttribute('data-api');
+  var API_BASE = location.hostname==='guayacanpreserve.com' ? '' : 'https://guayacanpreserve.com';
+  var history=[], started=false;
+  function EN(){ return (document.documentElement.lang||'en').toLowerCase().indexOf('es')!==0; }
+  function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); d.textContent=txt; msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
+  function open(){ panel.hidden=false; btn.style.display='none'; text.focus();
+    document.getElementById('gcSub').textContent = EN()?'Assistant':'Asistente';
+    document.getElementById('gcWaTxt').textContent = EN()?'Chat on WhatsApp':'Escríbenos por WhatsApp';
+    text.placeholder = EN()?'Ask about your visit…':'Pregúntanos sobre tu visita…';
+    document.getElementById('gcWa').href='https://wa.me/573102915558?text='+encodeURIComponent(EN()?'Hello, I have a question about Guayacán.':'Hola, tengo una pregunta sobre Guayacán.');
+    if(!started){ started=true; bubble('assistant', EN()?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?'); }
   }
-  sync(); a.addEventListener('mouseenter',sync); a.addEventListener('touchstart',sync,{passive:true});
+  function shut(){ panel.hidden=true; btn.style.display='flex'; }
+  btn.onclick=open; close.onclick=shut;
+  async function ask(){
+    var q=text.value.trim(); if(!q) return; text.value='';
+    bubble('user',q); history.push({role:'user',content:q});
+    var t=document.createElement('div'); t.className='gc-typing'; t.textContent='…'; msgs.appendChild(t); msgs.scrollTop=msgs.scrollHeight;
+    try{
+      var r=await fetch(API_BASE+API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:history})});
+      var d=await r.json(); t.remove();
+      if(d.reply){ bubble('assistant',d.reply); history.push({role:'assistant',content:d.reply}); }
+      else { bubble('assistant', EN()?'I could not answer that just now — tap WhatsApp below and our team will help.':'No pude responder ahora — toca WhatsApp abajo y nuestro equipo te ayuda.'); }
+    }catch(e){ t.remove(); bubble('assistant', EN()?'Connection issue — please use WhatsApp below.':'Problema de conexión — usa WhatsApp abajo.'); }
+  }
+  send.onclick=ask; text.addEventListener('keydown',function(e){ if(e.key==='Enter') ask(); });
 })();
 </script>
-<!-- /GNP-WHATSAPP-BUBBLE -->
+<!-- /GNP-CHAT-WIDGET -->
 </body>
 </html>
