@@ -402,7 +402,7 @@ function goBook(ds){
     var en=applyLang();
     if(!isOpen()) return;
     if(history.length===0){ msgs.innerHTML=''; renderChips(en);
-      bubble('assistant', en?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?');
+      bubble('assistant', en?'At Guayacán we say our land and our birds are a dream. Tell me what brings you here and how we can help.':'En Guayacán decimos que nuestros predios y nuestras aves son un sueño. Cuéntame qué te trae por aquí y cómo te podemos ayudar.');
     } else if(document.getElementById('gcChips').children.length){ renderChips(en); }
   });
   _mo.observe(document.documentElement,{attributes:true,attributeFilter:['lang']});
@@ -415,7 +415,7 @@ function goBook(ds){
     lastLang = langNow;
     if(!started){ started=true;
       renderChips(en);
-      bubble('assistant', en?'Hi! I can help with sessions, prices, what birds you might see, and how to book. What would you like to know?':'¡Hola! Te ayudo con jornadas, precios, qué aves podrías ver y cómo reservar. ¿Qué te gustaría saber?');
+      bubble('assistant', en?'At Guayacán we say our land and our birds are a dream. Tell me what brings you here and how we can help.':'En Guayacán decimos que nuestros predios y nuestras aves son un sueño. Cuéntame qué te trae por aquí y cómo te podemos ayudar.');
     }
     fitVV();
     if(window.innerWidth>560) text.focus();
