@@ -971,8 +971,12 @@ loadConfig();
   var history=[], started=false;
   function EN(){ return (document.documentElement.lang||'en').toLowerCase().indexOf('es')!==0; }
   function esc(s){return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-  function linkify(s){return s.replace(/(https?:\/\/[^\s]+)/g,function(u){return '<a href="'+u+'" target="_blank" rel="noopener" style="color:#1F5C3A;font-weight:600">'+u.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>';});}
-  function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); if(role==='user'){d.textContent=txt;}else{d.innerHTML=linkify(esc(txt));} msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
+  function md(s){ s=esc(s);
+    s=s.replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,'<a href="$2" target="_blank" rel="noopener" style="color:#1F5C3A;font-weight:600">$1</a>');
+    s=s.replace(/(^|\s)(https?:\/\/[^\s<]+)/g,function(m,p,u){return p+'<a href="'+u+'" target="_blank" rel="noopener" style="color:#1F5C3A;font-weight:600">'+u.replace(/^https?:\/\//,'').replace(/\/$/,'')+'</a>';});
+    s=s.replace(/\*\*([^*]+)\*\*/g,'<strong>$1</strong>');
+    return s; }
+  function bubble(role,txt){ var d=document.createElement('div'); d.className='gc-b '+(role==='user'?'gc-u':'gc-a'); if(role==='user'){d.textContent=txt;}else{d.innerHTML=md(txt);} msgs.appendChild(d); msgs.scrollTop=msgs.scrollHeight; return d; }
   function open(){ panel.style.display='flex'; panel.hidden=false; btn.style.display='none'; text.focus();
     document.getElementById('gcSub').textContent = EN()?'Assistant':'Asistente';
     document.getElementById('gcWaTxt').textContent = EN()?'Chat on WhatsApp':'Escríbenos por WhatsApp';
