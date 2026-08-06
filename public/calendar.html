@@ -281,9 +281,7 @@ function goBook(ds){
   <div class="swl-credit" style="font-size:10px;text-align:center;opacity:.55;padding:14px 12px 18px;letter-spacing:.3px">Developed in the US by sketchwithlight LLC</div>
 <!-- GNP-CHAT-WIDGET -->
 <div id="gnpChat" data-api="/api/chat">
-  <button id="gnpChatBtn" aria-label="Chat">
-    <img src="https://gnp.guayacanpreserve.com/logo-icon.png" alt="Guayacán">
-  </button>
+  <button id="gnpChatBtn" aria-label="Chat"><span class="gc-bird"><img class="gc-body" src="https://guayacanpreserve.com/bird-body.png" alt="Guayacán"/><img class="gc-wing" src="https://guayacanpreserve.com/bird-wing.png" alt=""/></span></button>
   <div id="gnpChatPanel" hidden style="display:none">
     <div class="gc-head">
       <img src="https://gnp.guayacanpreserve.com/logo-icon.png" alt="">
@@ -304,12 +302,14 @@ function goBook(ds){
 <style>
 #gnpChatBtn{position:fixed;right:16px;bottom:16px;z-index:9999;width:70px;height:70px;background:none;border:0;padding:0;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .15s;filter:drop-shadow(0 5px 9px rgba(0,0,0,.32))}
 #gnpChatBtn:hover{transform:scale(1.08)}
-#gnpChatBtn img{width:70px;height:70px;object-fit:contain;transform-origin:58% 68%}
-#gnpChatBtn.gc-fly{animation:gcBob 1.8s ease-in-out infinite}
-#gnpChatBtn.gc-fly img{animation:gcFlap .2s ease-in-out infinite}
-@keyframes gcBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
-@keyframes gcFlap{0%,100%{transform:rotate(-4deg)}50%{transform:rotate(4deg)}}
-@media (prefers-reduced-motion:reduce){#gnpChatBtn.gc-fly,#gnpChatBtn.gc-fly img{animation:none}}
+#gnpChatBtn .gc-bird{position:relative;width:70px;height:70px}
+#gnpChatBtn .gc-bird img{position:absolute;inset:0;width:70px;height:70px;object-fit:contain}
+#gnpChatBtn .gc-wing{transform-origin:55% 47%}
+#gnpChatBtn.gc-fly{animation:gcBob 2s ease-in-out infinite}
+#gnpChatBtn.gc-fly .gc-wing{animation:gcFlap .18s ease-in-out infinite}
+@keyframes gcBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}
+@keyframes gcFlap{0%{transform:rotate(-11deg)}50%{transform:rotate(9deg)}100%{transform:rotate(-11deg)}}
+@media (prefers-reduced-motion:reduce){#gnpChatBtn.gc-fly,#gnpChatBtn.gc-fly .gc-wing{animation:none}}
 #gnpChatPanel{position:fixed;right:18px;bottom:18px;z-index:10000;width:min(380px,calc(100vw - 28px));height:min(560px,calc(100vh - 40px));background:#FBF6EC;border:1px solid rgba(20,42,32,.15);border-radius:18px;box-shadow:0 20px 60px -20px rgba(0,0,0,.4);display:flex;flex-direction:column;overflow:hidden;font-family:'Inter',system-ui,sans-serif;animation:gcIn .2s ease}
 @keyframes gcIn{from{opacity:0;transform:translateY(14px) scale(.98)}to{opacity:1;transform:none}}
 .gc-head{display:flex;align-items:center;gap:10px;padding:14px 16px;background:#142A20;color:#FBF6EC}
