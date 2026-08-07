@@ -105,6 +105,14 @@ h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin:0 0 4px;}
       <textarea id="note" placeholder="Observaciones..."></textarea>
     </div>
 
+    <div class="section" id="compSection" style="display:none;">
+      <h3>Comprobante de pago</h3>
+      <div id="compBody" style="font-size:.9rem;line-height:1.6;"></div>
+      <input id="compRef" placeholder="Referencia verificada (opcional)" style="width:100%;margin-top:10px;border:1px solid #D8D0BC;border-radius:9px;padding:11px;font-size:15px;">
+      <button class="btn approve" id="confirmPayBtn" style="width:100%;margin-top:12px;" onclick="confirmPay()">Confirmar pago (verificado)</button>
+      <div style="font-size:.78rem;color:#6B7568;margin-top:8px;">Confirma solo si verificaste que el dinero llegó a la cuenta.</div>
+    </div>
+
     <div class="btns">
       <button class="btn reject" id="rejectBtn" onclick="handleAction('reject')">Rechazar</button>
       <button class="btn approve" id="approveBtn" onclick="handleAction('approve')">Aprobar</button>
@@ -227,6 +235,13 @@ async function loadReview() {
       document.getElementById('amt').textContent = d.estimatedAmount.amount + ' ' + d.estimatedAmount.currency;
     }
     renderCapacity(d.capacity);
+    if (d.awaitingVerification && d.comprobanteUrl) {
+      document.getElementById('compBody').innerHTML =
+        'Monto esperado: <b>' + (d.depositCop != null ? copFmt(d.depositCop) : (d.estimatedAmount ? d.estimatedAmount.amount + ' ' + d.estimatedAmount.currency : '')) + '</b><br>' +
+        (d.comprobanteRef ? 'Referencia enviada: ' + escHtml(d.comprobanteRef) + '<br>' : '') +
+        '<a href="' + escHtml(d.comprobanteUrl) + '" target="_blank" rel="noopener" style="color:var(--forest);font-weight:700;">Ver comprobante \u2197</a>';
+      document.getElementById('compSection').style.display = 'block';
+    }
     setupOperatorField(d.operators || []);
     
     document.getElementById('loadCard').style.display = 'none';
@@ -244,6 +259,24 @@ function showMsg(text, type) {
   const box = document.getElementById('msgBox');
   box.textContent = text;
   box.className = 'msg show ' + type;
+}
+
+function escHtml(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+async function confirmPay(){
+  const opEmail=operatorValue();
+  if(!opEmail){showMsg('Requerido: selecciona o indica el operador.','err');return;}
+  const btn=document.getElementById('confirmPayBtn'); btn.disabled=true;
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'confirmManualPayment',token:token,approverEmail:opEmail,reference:document.getElementById('compRef').value.trim()})});
+    const j=await res.json();
+    if(!j.ok){showMsg(j.message||j.error||'No se pudo confirmar.','err');btn.disabled=false;return;}
+    document.getElementById('detailCard').style.display='none';
+    const dc=document.getElementById('doneCard'); dc.classList.add('show'); dc.style.display='block';
+    document.getElementById('doneTitle').textContent='Pago confirmado';
+    document.getElementById('doneMsg').textContent=j.message||'Reserva completada.';
+  }catch(e){showMsg(String(e),'err');btn.disabled=false;}
 }
 
 async function handleAction(act) {
