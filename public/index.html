@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: index v2.15 · 2026-07-16 -->
+<!-- GNP-BUILD: index v2.31.0 · 2026-08-07 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -41,6 +41,9 @@ a{color:inherit;}
 .lang-toggle{position:absolute;top:24px;right:20px;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
 .lang-toggle button{background:none;border:0;color:var(--cream);opacity:.55;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;padding:7px 14px;cursor:pointer;transition:opacity .15s,background .15s;;font-size:1.05rem;line-height:1;filter:grayscale(1);opacity:.5}
 .lang-toggle button.active{opacity:1;background:rgba(251,246,236,.1);;filter:none;opacity:1}
+.back-site{position:absolute;top:24px;left:20px;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:999px;padding:7px 14px;background:none;color:var(--cream);opacity:.72;text-decoration:none;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;line-height:1;transition:opacity .15s,background .15s;z-index:2;}
+.back-site:hover,.back-site:focus-visible{opacity:1;background:rgba(251,246,236,.1);}
+.back-site .bs-arrow{font-size:.95rem;line-height:1;}
 
 /* ---------- FORM CARD ---------- */
 .card{background:var(--cream);color:var(--ink);border-radius:22px;margin-top:-20px;position:relative;padding:30px 24px 28px;box-shadow:0 30px 60px -20px rgba(0,0,0,.45);}
@@ -164,6 +167,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <body>
 
 <div class="hero">
+  <a class="back-site" href="https://guayacanpreserve.com" aria-label="Guayacan Natural Preserve"><span class="bs-arrow" aria-hidden="true">&#8592;</span><span id="t-backSite">Sitio web</span></a>
   <div class="lang-toggle" role="group" aria-label="Language">
     <button id="langEs" class="active" onclick="setLang('ES')" aria-label="Español" title="Español">🇪🇸</button>
     <button id="langEn" onclick="setLang('EN')" aria-label="English" title="English">🇬🇧</button>
@@ -378,7 +382,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <script>
 /* ============ CONFIG ============ */
 const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const INDEX_BUILD = 'v2.28.0 · 2026-08-01';
+const INDEX_BUILD = 'v2.31.0 · 2026-08-07';
 console.log('[GNP] index build ' + INDEX_BUILD);
 
 let LANG = ((navigator.language||'es').toLowerCase().indexOf('en')===0 ? 'EN' : 'ES');
@@ -394,6 +398,7 @@ let availabilityCache = {};
 /* ============ I18N (static UI chrome; plan/inclusion text comes from CONFIG) ============ */
 const I18N = {
   ES: {
+    backSite: 'Sitio web',
     eyebrow: 'Avistamiento de aves · Colombia',
     h1: 'Elige tu experiencia en la reserva.',
     sub: 'Escoge tu plan, cuéntanos cuántos son, y verás el desglose completo antes de confirmar.',
@@ -432,6 +437,7 @@ const I18N = {
     perPerson: 'por persona', each: 'c/u'
   },
   EN: {
+    backSite: 'Website',
     eyebrow: 'Birdwatching · Colombia',
     h1: 'Choose your experience at the preserve.',
     sub: 'Pick your plan, tell us how many, and see the full breakdown before you confirm.',
