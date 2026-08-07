@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: pay v2.28.0 · 2026-08-01 -->
+<!-- GNP-BUILD: pay v2.30.1 · 2026-08-07 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -16,22 +16,25 @@ body{background:#EFEAE0;color:#15201A;font-family:'Inter',system-ui,sans-serif;p
 h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin-bottom:4px;}
 .meta{font-size:.84rem;color:#6B7568;margin-bottom:18px;}
 .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #EFEAE0;font-size:.92rem;}
-.row .k{color:#6B7568;}
-.row .v{font-weight:600;}
+.row .k{color:#6B7568;}.row .v{font-weight:600;}
 .amount{margin:16px 0;padding:16px;background:#F6F2E8;border-radius:12px;display:flex;justify-content:space-between;align-items:center;}
-.amount .label{font-size:.8rem;color:#6B7568;}
-.amount .val{font-family:'Fraunces';font-size:1.5rem;}
+.amount .label{font-size:.8rem;color:#6B7568;}.amount .val{font-family:'Fraunces';font-size:1.5rem;}
 .notice{margin:14px 0;padding:12px 14px;background:#FBE5EA;color:#A3274C;border-radius:10px;font-size:.85rem;}
+.instr{margin:14px 0;padding:16px;background:#F6F2E8;border-radius:12px;}
+.instr h3{font-family:'Fraunces';font-size:1.05rem;margin-bottom:10px;}
+.instr .pi{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px solid #E7E0D2;font-size:.9rem;}
+.instr .pi:last-child{border:none;}
+.instr .pi .k{color:#6B7568;}.instr .pi .v{font-weight:600;text-align:right;word-break:break-word;}
+.qr{display:block;max-width:210px;margin:12px auto 4px;border-radius:10px;}
+.step{font-size:.85rem;color:#3B463E;margin:12px 0;line-height:1.5;}
+.upload{display:block;text-align:center;background:#1F3B2E;color:#FBF6EC;border-radius:11px;padding:15px;font-weight:600;cursor:pointer;margin-top:12px;font-size:15px;}
+.upload input{display:none;}
+.refinput{width:100%;border:1px solid #D8D0BC;border-radius:10px;padding:12px 13px;font-size:15px;margin-top:12px;background:#fff;outline:none;}
 .btn{width:100%;border:none;border-radius:11px;padding:16px;font-size:16px;font-weight:600;cursor:pointer;margin-top:8px;}
-.btn-pay{background:#1F3B2E;color:#FBF6EC;}
-.btn:disabled{opacity:.5;cursor:not-allowed;}
-.mock-tag{display:inline-block;background:#E8B23D;color:#15201A;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:6px;margin-bottom:10px;}
+.btn-pay{background:#1F3B2E;color:#FBF6EC;}.btn:disabled{opacity:.5;cursor:not-allowed;}
 .msg{margin-top:14px;font-size:.86rem;padding:10px 13px;border-radius:9px;display:none;}
-.msg.show{display:block;}
-.msg.err{background:#FBE5EA;color:#A3274C;}
-.msg.ok{background:#E6F2EA;color:#1F5C3A;}
-.state{text-align:center;padding:20px 0;display:none;}
-.state.show{display:block;}
+.msg.show{display:block;}.msg.err{background:#FBE5EA;color:#A3274C;}.msg.ok{background:#E6F2EA;color:#1F5C3A;}.msg.info{background:#F0F4EE;color:#3B463E;}
+.state{text-align:center;padding:20px 0;display:none;}.state.show{display:block;}
 .state .big{font-family:'Fraunces';font-size:1.6rem;margin:12px 0;}
 .footer{text-align:center;margin-top:40px;font-size:.82rem;}
 .footer a{color:#1F3B2E;text-decoration:none;margin:0 8px;}
@@ -40,111 +43,115 @@ h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin-bottom:4px;}
 <body>
 <div class="wrap">
   <div class="brand"><img src="logo.png" alt="Guayacan Natural Preserve"></div>
-
   <div class="card" id="loadCard"><p style="color:#6B7568;text-align:center;padding:10px 0;">Cargando...</p></div>
-
   <div class="card" id="payCard" style="display:none;">
-    <div class="mock-tag">Pago simulado</div>
     <h1 id="resId"></h1>
     <div class="meta" id="metaLine"></div>
-
     <div class="row"><span class="k">Fecha</span><span class="v" id="fecha"></span></div>
     <div class="row" style="border:none;"><span class="k">Jornada</span><span class="v" id="jornada"></span></div>
-
-    <div class="amount">
-      <div class="label">Depósito requerido</div>
-      <div class="val" id="amt"></div>
-    </div>
-
-    <div id="payZone">
-      <button class="btn btn-pay" id="btnPay" onclick="doPay()">Confirmar pago (simulado)</button>
-    </div>
+    <div class="amount"><div class="label">Depósito requerido</div><div class="val" id="amt"></div></div>
+    <div id="payZone"></div>
     <div class="msg" id="msg"></div>
   </div>
-
   <div class="card state" id="doneCard">
     <div class="big" id="doneTitle"></div>
     <p style="color:#6B7568;font-size:.9rem;" id="doneBody"></p>
   </div>
-
   <div class="footer">
     <a href="https://maps.app.goo.gl/WidM1FDxCbVKXHZ77" target="_blank">Mapas</a>
     <a href="https://ebird.org/hotspot/L30085815" target="_blank">eBird</a>
     <a href="https://instagram.com/guayacanpreserve" target="_blank">Instagram</a>
-    <a href="https://facebook.com/guayacanpreserve" target="_blank">Facebook</a>
   </div>
 </div>
-
 <script>
-const API = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const token = new URLSearchParams(window.location.search).get('token') || '';
-console.log('[GNP] pay build v2.15 · 2026-07-16');
+const API='https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+const token=new URLSearchParams(window.location.search).get('token')||'';
+function copFmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CO')+' COP';}
+function usdFmt(n){return 'US$'+(Number(n)||0).toFixed(2);}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function setMsg(kind,text){var m=document.getElementById('msg');m.className='msg show '+(kind||'info');m.textContent=text;}
+function showDone(title,body){document.getElementById('payCard').style.display='none';var d=document.getElementById('doneCard');d.classList.add('show');document.getElementById('doneTitle').textContent=title;document.getElementById('doneBody').textContent=body;}
 
-function copFmt(n){ return '$' + Math.round(Number(n)||0).toLocaleString('es-CO') + ' COP'; }
-function usdFmt(n){ return 'US$' + (Number(n)||0).toFixed(2); }
-
-async function load() {
-  if (!token) { showLoadErr('Token faltante.'); return; }
-  try {
-    const r = await fetch(API + '?action=pay&token=' + encodeURIComponent(token));
-    const j = await r.json();
-    if (!j.ok) { showLoadErr(j.error || 'No se pudo cargar.'); return; }
-    render(j.data);
-  } catch(e) { showLoadErr(String(e)); }
+async function load(){
+  if(!token){showLoadErr('Token faltante.');return;}
+  try{const r=await fetch(API+'?action=pay&token='+encodeURIComponent(token));const j=await r.json();
+    if(!j.ok){showLoadErr(j.error||'No se pudo cargar.');return;}render(j.data);}
+  catch(e){showLoadErr(String(e));}
 }
+function showLoadErr(msg){document.getElementById('loadCard').innerHTML='<p style="color:#A3274C;text-align:center;padding:10px 0;">'+esc(msg)+'</p>';}
 
-function render(d) {
-  document.getElementById('loadCard').style.display = 'none';
-  document.getElementById('payCard').style.display = 'block';
-  document.getElementById('resId').textContent = d.reservationId;
-  document.getElementById('metaLine').textContent = 'Estado: ' + d.estado + ' | Pago: ' + d.paymentStatus;
-  document.getElementById('fecha').textContent = d.fecha;
-  document.getElementById('jornada').textContent = d.jornada;
-  if (d.paymentCurrency === 'COP') {
-    document.getElementById('amt').textContent = copFmt(d.paymentAmount) + (d.paymentUsd != null ? ' / ' + usdFmt(d.paymentUsd) : '');
-  } else {
-    document.getElementById('amt').textContent = d.paymentAmount + ' ' + d.paymentCurrency;
+function render(d){
+  document.getElementById('loadCard').style.display='none';
+  document.getElementById('payCard').style.display='block';
+  document.getElementById('resId').textContent=d.reservationId;
+  document.getElementById('metaLine').textContent='Estado: '+d.estado+' | Pago: '+d.paymentStatus;
+  document.getElementById('fecha').textContent=d.fecha;
+  document.getElementById('jornada').textContent=d.jornada;
+  document.getElementById('amt').textContent=(d.paymentCurrency==='COP')
+    ? copFmt(d.paymentAmount)+(d.paymentUsd!=null?' / '+usdFmt(d.paymentUsd):'')
+    : d.paymentAmount+' '+d.paymentCurrency;
+  var zone=document.getElementById('payZone');
+
+  if(d.comprobanteSubmitted){
+    zone.innerHTML='<div class="msg show info">Ya recibimos tu comprobante. Verificaremos el pago y te confirmaremos por correo y WhatsApp.</div>';
+    return;
   }
-
-  if (!d.canPay) {
-    document.getElementById('payZone').innerHTML = '<div class="notice">Esta reserva no está pendiente de pago o ya fue confirmada.</div>';
+  if(!d.canPay){
+    zone.innerHTML='<div class="notice">Esta reserva no está pendiente de pago o ya fue confirmada.</div>';
+    return;
   }
-}
-
-function showLoadErr(msg) {
-  document.getElementById('loadCard').innerHTML = '<p style="color:#A3274C;text-align:center;padding:10px 0;">' + msg + '</p>';
-}
-
-async function doPay() {
-  document.getElementById('btnPay').disabled = true;
-  const msg = document.getElementById('msg');
-  try {
-    const r = await fetch(API, {
-      method: 'POST',
-      headers: {'Content-Type': 'text/plain;charset=utf-8'},
-      body: JSON.stringify({action: 'confirmPaymentMock', token: token})
-    });
-    const j = await r.json();
-    if (!j.ok) {
-      msg.className = 'msg show err';
-      msg.textContent = j.message || j.error;
-      document.getElementById('btnPay').disabled = false;
-      return;
-    }
-    document.getElementById('payCard').style.display = 'none';
-    document.getElementById('doneCard').classList.add('show');
-    document.getElementById('doneTitle').textContent = 'Confirmado';
-    document.getElementById('doneBody').textContent = j.message;
-  } catch(e) {
-    msg.className = 'msg show err';
-    msg.textContent = String(e);
-    document.getElementById('btnPay').disabled = false;
+  // Colombia lane: instructions + comprobante upload
+  if(d.isColombian && d.manualEnabled){
+    var p=d.pay||{}, rows='';
+    if(p.nequi) rows+='<div class="pi"><span class="k">Nequi</span><span class="v">'+esc(p.nequi)+'</span></div>';
+    if(p.breb)  rows+='<div class="pi"><span class="k">Llaves (Bre-B)</span><span class="v">'+esc(p.breb)+'</span></div>';
+    if(p.bank)  rows+='<div class="pi"><span class="k">Cuenta</span><span class="v">'+esc(p.bank)+'</span></div>';
+    if(p.holder)rows+='<div class="pi"><span class="k">Titular</span><span class="v">'+esc(p.holder)+'</span></div>';
+    zone.innerHTML=
+      '<div class="instr"><h3>Paga con QR, Nequi o Llaves</h3>'+
+      (p.qr?'<img class="qr" src="'+esc(p.qr)+'" alt="QR de pago">':'')+
+      rows+'</div>'+
+      '<div class="step">1. Paga el depósito con tu app (QR, Nequi, Llaves o transferencia).<br>2. Toma un pantallazo del comprobante.<br>3. Súbelo aquí abajo. Verificamos y confirmamos tu reserva.</div>'+
+      '<input class="refinput" id="ref" placeholder="Referencia (opcional)">'+
+      '<label class="upload">Subir comprobante<input type="file" accept="image/*,application/pdf" onchange="submitComprobante(this)"></label>';
+    return;
   }
+  // Foreign / card lane (placeholder mock until gateway is live)
+  zone.innerHTML='<button class="btn btn-pay" id="btnPay" onclick="doPay()">Pagar con tarjeta</button>';
 }
 
+async function submitComprobante(input){
+  var file=input.files&&input.files[0]; input.value='';
+  if(!file) return;
+  if(file.size>7*1024*1024){setMsg('err','El archivo es muy grande (máx 7MB).');return;}
+  setMsg('info','Subiendo comprobante...');
+  var reader=new FileReader();
+  reader.onload=async function(ev){
+    var b64=String(ev.target.result).split(',')[1], mime=file.type||'image/jpeg';
+    var ref=(document.getElementById('ref')||{}).value||'';
+    try{
+      var r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({action:'submitComprobante',token:token,fileBase64:b64,mime:mime,reference:ref})});
+      var j=await r.json();
+      if(j.ok){ showDone('Comprobante recibido', j.message); }
+      else { setMsg('err', j.message||j.error||'No se pudo subir.'); }
+    }catch(e){ setMsg('err', String(e)); }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function doPay(){
+  document.getElementById('btnPay').disabled=true;
+  try{
+    var r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({action:'confirmPaymentMock',token:token})});
+    var j=await r.json();
+    if(!j.ok){setMsg('err',j.message||j.error);document.getElementById('btnPay').disabled=false;return;}
+    showDone('Confirmado', j.message);
+  }catch(e){setMsg('err',String(e));document.getElementById('btnPay').disabled=false;}
+}
 load();
 </script>
-  <!-- swl-credit -->
-  <div class="swl-credit" style="font-size:10px;text-align:center;opacity:.55;padding:14px 12px 18px;letter-spacing:.3px">Developed in the US by sketchwithlight LLC</div>
+<div class="swl-credit" style="font-size:10px;text-align:center;opacity:.55;padding:14px 12px 18px;letter-spacing:.3px">Developed in the US by sketchwithlight LLC</div>
 </body>
 </html>
