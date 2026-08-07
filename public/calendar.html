@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: calendar v2.28.1 · 2026-08-01 -->
+<!-- GNP-BUILD: calendar v2.28.2 · 2026-08-07 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -29,6 +29,18 @@ a{color:inherit;}
 .lang-toggle{position:absolute;top:20px;right:20px;display:flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;}
 .lang-toggle button{background:none;border:0;color:var(--cream);opacity:.55;font-family:'Inter';font-size:.78rem;font-weight:600;letter-spacing:.04em;padding:7px 14px;cursor:pointer;transition:opacity .15s,background .15s;;font-size:1.05rem;line-height:1;filter:grayscale(1);opacity:.5}
 .lang-toggle button.active{opacity:1;background:rgba(251,246,236,.1);;filter:none;opacity:1}
+/* Language toggle uses letters, not flag emoji: Chrome on Windows has no colour
+   glyph for regional-indicator pairs and renders a grey placeholder flag, so the
+   Spanish option was unreadable. Letters are tinted with each flag's own colours
+   (Union blue lifted for contrast on the dark nav); the inactive state keeps the
+   existing grayscale filter, so the affordance is unchanged. */
+.lang-toggle button{font-size:.78rem;font-weight:700;letter-spacing:.06em;padding:6px 12px;}
+.lang-toggle button[data-lang] .g1,.lang-toggle button[data-lang] .g2{font:inherit;}
+.lang-toggle button[data-lang="EN"] .g1{color:#5C7FD0;}
+.lang-toggle button[data-lang="EN"] .g2{color:#C8102E;}
+.lang-toggle button[data-lang="ES"] .g1{color:#C60B1E;}
+.lang-toggle button[data-lang="ES"] .g2{color:#FFC400;}
+
 .back-link{position:absolute;top:24px;left:20px;font-size:.78rem;color:var(--gold);text-decoration:none;display:flex;align-items:center;gap:4px;}
 .hero-copy{max-width:640px;margin:10px auto 0;text-align:center;}
 .eyebrow{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);font-weight:600;}
@@ -77,8 +89,8 @@ a{color:inherit;}
 <div class="hero">
   <a class="back-link" href="index.html" id="t-back">&larr; Reservar</a>
   <div class="lang-toggle" role="group" aria-label="Language">
-    <button id="langEs" class="active" onclick="setLang('ES')" aria-label="Español" title="Español">🇪🇸</button>
-    <button id="langEn" onclick="setLang('EN')" aria-label="English" title="English">🇬🇧</button>
+    <button id="langEs" class="active" data-lang="ES" onclick="setLang('ES')" aria-label="Español" title="Español"><span class="g1">E</span><span class="g2">S</span></button>
+    <button id="langEn" data-lang="EN" onclick="setLang('EN')" aria-label="English" title="English"><span class="g1">E</span><span class="g2">N</span></button>
   </div>
   <div class="brand">
     <img src="logo.png" alt="Guayacan Natural Preserve">
@@ -117,7 +129,7 @@ a{color:inherit;}
 /* ============ CONFIG ============ */
 // Same Apps Script Web App URL used by index.html.
 const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const CAL_BUILD = 'v2.15 · 2026-07-16';
+const CAL_BUILD = 'v2.28.2 · 2026-08-07';
 // Friendly session labels for the remaining-spots tooltip; falls back to the raw key.
 const CONFIG_LABELS = {
   AMANECER: { ES: 'Amanecer', EN: 'Dawn' },
