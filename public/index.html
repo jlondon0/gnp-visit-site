@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: index v2.31.1 · 2026-08-07 -->
+<!-- GNP-BUILD: index v2.32.0 · 2026-08-08 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -281,7 +281,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           </div>
         </div>
 
-        <div class="field">
+        <div class="field" id="natField">
           <label id="t-lblNationality">¿Eres colombiano o residente en Colombia?</label>
           <div class="seg" id="natGroup">
             <button type="button" class="segbtn" id="natYes" onclick="setNationality(true)">Sí</button>
@@ -394,7 +394,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 <script>
 /* ============ CONFIG ============ */
 const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const INDEX_BUILD = 'v2.31.1 · 2026-08-07';
+const INDEX_BUILD = 'v2.32.0 · 2026-08-08';
 console.log('[GNP] index build ' + INDEX_BUILD);
 
 let LANG = ((navigator.language||'es').toLowerCase().indexOf('en')===0 ? 'EN' : 'ES');
@@ -404,6 +404,10 @@ let selectedSubOption = null;   // sub-option key, e.g. 'AMANECER' (Pasadía onl
 let guestCount = 2;
 let almuerzoQty = 0;
 let isColombian = null;         // null until answered
+// Residency branching is a backend switch. While it is off the question is not asked at
+// all: the tax is zero either way and the foreign lane is a mock, so asking it could only
+// route a real guest somewhere that cannot take their money.
+let RESIDENCY_ON = false;
 let hasMinors = null;           // null until answered
 let availabilityCache = {};
 
@@ -520,6 +524,12 @@ async function loadConfig(){
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'config error');
     CONFIG = json.data;
+    RESIDENCY_ON = (CONFIG.residencyEnabled === true);
+    if (!RESIDENCY_ON) {
+      const nf = document.getElementById('natField');
+      if (nf) nf.classList.add('hideit');
+      isColombian = true;   // single lane: priced and routed as a local payment
+    }
     if (CONFIG.version) console.log('[GNP] backend ' + CONFIG.version + ' · index ' + INDEX_BUILD + (CONFIG.version === INDEX_BUILD ? ' ✓' : ' ⚠ mismatch'));
     const min = new Date(); min.setDate(min.getDate() + Number(CONFIG.minDaysAdvance || 0));
     document.getElementById('f_fecha').min = min.toISOString().slice(0,10);
@@ -735,8 +745,8 @@ function computeReceiptLocal(){
   const pax = guestCount;
   const almPrice = Number(CONFIG.mealAlmuerzoPriceCop) || 0;
   const aQty = plan.allowsAlmuerzo ? almuerzoQty : 0;
-  const taxKnown = (isColombian !== null);
-  const taxPct = taxKnown ? (isColombian ? 0 : (Number(CONFIG.foreignTaxPct) || 0)) : null;
+  const taxKnown = (!RESIDENCY_ON) || (isColombian !== null);
+  const taxPct = !RESIDENCY_ON ? 0 : (taxKnown ? (isColombian ? 0 : (Number(CONFIG.foreignTaxPct) || 0)) : null);
   const depositPct = Number(CONFIG.depositPct) || 50;
 
   const lines = [];
@@ -874,7 +884,7 @@ async function submitReservation(){
   if (!fecha)   return fail('f_fecha',   t.errRequired);
   if (!selectedPlan) return fail('planList', t.errRequired, true);
   if (hasSub && !selectedSubOption) return fail('subOptionList', t.errRequired, true);
-  if (isColombian === null) return fail('natGroup', t.errNat, true);
+  if (RESIDENCY_ON && isColombian === null) return fail('natGroup', t.errNat, true);
   if (hasMinors === true && !document.getElementById('f_minorWith').value.trim()) return fail('f_minorWith', LANG === 'EN' ? 'Please enter the responsible adult accompanying the minor(s).' : 'Indica el adulto responsable que acompaña al menor.');
   if (!ackAccepted) return fail('ackField', t.errAck, true);
   if (!waiverAccepted) return fail('waiverField', t.errRequired, true);
