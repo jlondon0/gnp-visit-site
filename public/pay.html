@@ -101,6 +101,8 @@ function render(d){
     return;
   }
   // Colombia lane: instructions + comprobante upload
+  // While residency is off the backend reports isColombian true for every guest, so this
+  // condition resolves to the single manual lane. Kept as one test, not two.
   if(d.isColombian && d.manualEnabled){
     var p=d.pay||{}, rows='';
     if(p.nequi) rows+='<div class="pi"><span class="k">Nequi</span><span class="v">'+esc(p.nequi)+'</span></div>';
