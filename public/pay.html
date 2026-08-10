@@ -86,7 +86,7 @@ function render(d){
   document.getElementById('resId').textContent=d.reservationId;
   document.getElementById('metaLine').textContent='Estado: '+d.estado+' | Pago: '+d.paymentStatus;
   document.getElementById('fecha').textContent=d.fecha;
-  document.getElementById('jornada').textContent=d.jornada;
+  document.getElementById('jornada').textContent=(d.jornadaLabel || d.jornada);
   document.getElementById('amt').textContent=(d.paymentCurrency==='COP')
     ? copFmt(d.paymentAmount)+(d.paymentUsd!=null?' / '+usdFmt(d.paymentUsd):'')
     : d.paymentAmount+' '+d.paymentCurrency;
