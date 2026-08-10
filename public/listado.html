@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<!-- GNP-BUILD: listado v1.0.0 · 2026-08-10 -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Datos para el seguro · Guayacán Natural Preserve</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#15201A; --forest:#1F3B2E; --forest-deep:#142A20; --cream:#FBF6EC;
+  --gold:#E8B23D; --coral:#E2698A; --line:rgba(21,32,26,.14);
+  --ok:#3F7D57; --warn:#B0424F; --muted:#6B655C;
+  font-size:16px;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--cream);color:var(--ink);
+  font-family:'Inter',system-ui,-apple-system,sans-serif;line-height:1.5}
+.wrap{max-width:640px;margin:0 auto;padding:0 18px 120px}
+
+header{background:radial-gradient(120% 140% at 50% 0%,#2A4F3D 0%,var(--forest) 55%,var(--forest-deep) 100%);
+  color:var(--cream);padding:26px 18px 22px}
+header .inner{max-width:640px;margin:0 auto}
+.eyebrow{font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;opacity:.72}
+h1{font-family:'Fraunces',serif;font-weight:700;font-size:1.5rem;margin:.35rem 0 .5rem;line-height:1.15}
+.sub{font-size:.9rem;opacity:.86;margin:0}
+.resline{margin-top:14px;font-size:.82rem;opacity:.8}
+
+.progress{position:sticky;top:0;z-index:20;background:var(--cream);
+  border-bottom:1px solid var(--line);padding:12px 18px}
+.progress .inner{max-width:640px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.bar{flex:1;height:8px;border-radius:99px;background:rgba(21,32,26,.1);overflow:hidden}
+.bar > i{display:block;height:100%;width:0;background:var(--ok);transition:width .3s}
+.count{font-size:.8rem;font-weight:600;white-space:nowrap}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;margin:14px 0;
+  box-shadow:0 1px 2px rgba(21,32,26,.04)}
+.card.done{border-color:rgba(63,125,87,.5);background:#FCFEFC}
+.cardhead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.who{font-family:'Fraunces',serif;font-weight:700;font-size:1.05rem}
+.chip{font-size:.7rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  padding:4px 9px;border-radius:99px;background:rgba(21,32,26,.07);color:var(--muted);white-space:nowrap}
+.chip.ok{background:rgba(63,125,87,.14);color:var(--ok)}
+.chip.err{background:rgba(176,66,79,.12);color:var(--warn)}
+
+label{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin:12px 0 5px}
+input,select{width:100%;font:inherit;font-size:1rem;padding:12px 13px;border:1px solid var(--line);
+  border-radius:11px;background:#fff;color:var(--ink)}
+input:focus,select:focus{outline:2px solid rgba(31,59,46,.35);outline-offset:1px;border-color:var(--forest)}
+.row2{display:grid;grid-template-columns:1fr 1.4fr;gap:10px}
+.hint{font-size:.78rem;color:var(--muted);margin-top:6px}
+.hint b{color:var(--ink)}
+
+.scanbtn{margin-top:12px;width:100%;display:flex;align-items:center;justify-content:center;gap:9px;
+  font:inherit;font-size:.95rem;font-weight:600;padding:13px;border-radius:11px;cursor:pointer;
+  border:1px dashed rgba(31,59,46,.45);background:rgba(31,59,46,.05);color:var(--forest)}
+.scanbtn:disabled{opacity:.5}
+.minorbox{margin-top:12px;padding:12px;border-radius:11px;background:rgba(232,178,61,.1);
+  border:1px solid rgba(232,178,61,.4)}
+.minorbox .t{display:flex;align-items:flex-start;gap:10px;font-size:.9rem}
+.minorbox input[type=checkbox]{width:20px;height:20px;flex:none;margin-top:2px}
+
+.sendwrap{position:fixed;left:0;right:0;bottom:0;background:var(--cream);
+  border-top:1px solid var(--line);padding:14px 18px calc(14px + env(safe-area-inset-bottom))}
+.sendwrap .inner{max-width:640px;margin:0 auto}
+.send{width:100%;font:inherit;font-size:1rem;font-weight:700;padding:15px;border:0;border-radius:12px;
+  background:var(--forest);color:var(--cream);cursor:pointer}
+.send:disabled{background:rgba(21,32,26,.18);color:rgba(21,32,26,.45);cursor:default}
+.msg{margin-top:9px;font-size:.85rem;text-align:center}
+.msg.err{color:var(--warn)}.msg.ok{color:var(--ok)}
+
+.privacy{margin:22px 0 0;padding:14px;border-radius:12px;background:rgba(21,32,26,.04);
+  font-size:.8rem;color:var(--muted)}
+.privacy b{color:var(--ink)}
+
+#cam{position:fixed;inset:0;z-index:60;background:#000;display:none;flex-direction:column}
+#cam video{flex:1;width:100%;object-fit:cover}
+#cam .cambar{padding:14px 18px calc(14px + env(safe-area-inset-bottom));background:#000;color:#fff;
+  display:flex;align-items:center;gap:12px}
+#cam .cambar p{flex:1;margin:0;font-size:.85rem}
+#cam .cambar button{font:inherit;font-weight:600;padding:11px 16px;border-radius:10px;border:0;
+  background:#fff;color:#111}
+.reticle{position:absolute;left:8%;right:8%;top:34%;height:22%;border:2px solid var(--gold);
+  border-radius:12px;box-shadow:0 0 0 100vmax rgba(0,0,0,.45)}
+.center{text-align:center;padding:50px 0;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<header><div class="inner">
+  <div class="eyebrow" id="t-eyebrow">Guayacán Natural Preserve</div>
+  <h1 id="t-h1">Datos para el seguro</h1>
+  <p class="sub" id="t-sub">Necesitamos el nombre completo y el documento de cada visitante para adquirir el seguro de accidentes. Toma menos de un minuto por persona.</p>
+  <div class="resline" id="resline"></div>
+</div></header>
+
+<div class="progress"><div class="inner">
+  <div class="bar"><i id="barfill"></i></div>
+  <div class="count" id="count">—</div>
+</div></div>
+
+<div class="wrap">
+  <div id="cards"><div class="center" id="loading">Cargando…</div></div>
+  <div class="privacy" id="t-privacy"></div>
+</div>
+
+<div class="sendwrap"><div class="inner">
+  <button class="send" id="sendBtn" disabled>Enviar al asegurador</button>
+  <div class="msg" id="sendMsg"></div>
+</div></div>
+
+<div id="cam">
+  <video id="camVideo" playsinline muted></video>
+  <div class="reticle"></div>
+  <div class="cambar">
+    <p id="camHint">Apunta al código de barras del reverso de la cédula.</p>
+    <button id="camClose">Cerrar</button>
+  </div>
+</div>
+
+<script>
+const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+const LISTADO_BUILD = 'v1.0.0 · 2026-08-10';
+const TOKEN = new URLSearchParams(location.search).get('token') || '';
+
+/* Wording per document type. The instruction is the whole point: nobody should have to
+   work out which side of the card to point the camera at. Only the CC carries a PDF417
+   barcode we can read exactly, so it is the only type offered a scan. */
+const DOCS = {
+  CC:  { es:'Cédula de ciudadanía', en:'Colombian ID (CC)',
+         scan:true,
+         hintEs:'Voltea la cédula. Vamos a leer el <b>código de barras del reverso</b> — es exacto, no hay que escribir nada.',
+         hintEn:'Turn the card over. We read the <b>barcode on the back</b> — exact, nothing to type.' },
+  TI:  { es:'Tarjeta de identidad (menores)', en:'Minor ID card (TI)', scan:false,
+         hintEs:'Escribe el número tal como aparece en la tarjeta. Son 10 dígitos.',
+         hintEn:'Type the number as printed on the card. Ten digits.' },
+  PAS: { es:'Pasaporte', en:'Passport', scan:false,
+         hintEs:'Escribe el número del pasaporte, con letras si las tiene.',
+         hintEn:'Type the passport number, including letters if any.' },
+  RC:  { es:'Registro civil (menores de 7)', en:'Birth registry (under 7)', scan:false,
+         hintEs:'Escribe el número del registro civil.',
+         hintEn:'Type the birth registry number.' },
+  CE:  { es:'Cédula de extranjería', en:'Foreign resident ID (CE)', scan:false,
+         hintEs:'Escribe el número de la cédula de extranjería.',
+         hintEn:'Type the foreign resident ID number.' }
+};
+
+const T = {
+  ES:{ eyebrow:'Guayacán Natural Preserve', h1:'Datos para el seguro',
+       sub:'Necesitamos el nombre completo y el documento de cada visitante para adquirir el seguro de accidentes. Toma menos de un minuto por persona.',
+       person:'Visitante', name:'Nombre completo', type:'Tipo de documento', num:'Número',
+       scan:'Escanear el reverso de la cédula', saving:'Guardando…', saved:'Listo', pending:'Falta',
+       minor:'Es menor de 18 años', auth:'Nombre del padre, madre o representante legal que autoriza',
+       send:'Enviar al asegurador', sent:'Enviado al asegurador',
+       count:(a,b)=>a+' de '+b+' listos',
+       privacy:'<b>No guardamos fotos de documentos.</b> Si escaneas la cédula, la lectura ocurre en tu teléfono y solo se envían el nombre y el número. Usamos estos datos únicamente para adquirir el seguro de accidentes de esta visita.',
+       camHint:'Apunta al código de barras del reverso de la cédula.',
+       confirm:'Revisa los datos leídos antes de guardar.',
+       noCam:'No pudimos abrir la cámara. Escribe los datos.',
+       noScan:'No se pudo leer el código. Acerca la cámara o escribe los datos.' },
+  EN:{ eyebrow:'Guayacán Natural Preserve', h1:'Details for the insurance',
+       sub:'We need each visitor’s full name and ID document to purchase the accident insurance. Under a minute per person.',
+       person:'Visitor', name:'Full name', type:'Document type', num:'Number',
+       scan:'Scan the back of the ID card', saving:'Saving…', saved:'Done', pending:'Pending',
+       minor:'Under 18', auth:'Name of the parent or legal guardian authorising this',
+       send:'Send to the insurer', sent:'Sent to the insurer',
+       count:(a,b)=>a+' of '+b+' complete',
+       privacy:'<b>We do not store document photos.</b> If you scan the card, the reading happens on your phone and only the name and number are sent. We use this solely to purchase the accident insurance for this visit.',
+       camHint:'Point at the barcode on the back of the card.',
+       confirm:'Check the scanned details before saving.',
+       noCam:'We could not open the camera. Please type the details.',
+       noScan:'Could not read the code. Move closer or type the details.' }
+};
+
+let LANG = 'ES', DATA = null, t = T.ES;
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function api(params){
+  const res = await fetch(API_BASE + '?' + new URLSearchParams(params).toString());
+  return res.json();
+}
+async function post(body){
+  const res = await fetch(API_BASE, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify(Object.assign({ token: TOKEN }, body)) });
+  return res.json();
+}
+
+/* ── render ─────────────────────────────────────────────────────────── */
+function optionList(sel){
+  return Object.keys(DOCS).map(k =>
+    '<option value="' + k + '"' + (k === sel ? ' selected' : '') + '>' +
+    esc(DOCS[k][LANG === 'EN' ? 'en' : 'es']) + ' (' + k + ')</option>').join('');
+}
+
+function cardHtml(i, r){
+  const tipo = r.tipo || (i === 1 ? 'CC' : '');
+  const d = DOCS[tipo] || null;
+  const done = !!(r.nombre && r.tipo && r.numero);
+  return '' +
+  '<div class="card' + (done ? ' done' : '') + '" id="card' + i + '">' +
+    '<div class="cardhead">' +
+      '<div class="who">' + esc(t.person) + ' ' + i + '</div>' +
+      '<div class="chip' + (done ? ' ok' : '') + '" id="chip' + i + '">' +
+        esc(done ? t.saved : t.pending) + '</div>' +
+    '</div>' +
+    '<label for="n' + i + '">' + esc(t.name) + '</label>' +
+    '<input id="n' + i + '" type="text" autocomplete="name" value="' + esc(r.nombre) + '">' +
+    '<div class="row2">' +
+      '<div><label for="tp' + i + '">' + esc(t.type) + '</label>' +
+        '<select id="tp' + i + '">' +
+          (tipo ? '' : '<option value=""></option>') + optionList(tipo) + '</select></div>' +
+      '<div><label for="d' + i + '">' + esc(t.num) + '</label>' +
+        '<input id="d' + i + '" type="text" inputmode="numeric" autocomplete="off" value="' + esc(r.numero) + '"></div>' +
+    '</div>' +
+    '<div class="hint" id="h' + i + '">' + (d ? d[LANG === 'EN' ? 'hintEn' : 'hintEs'] : '') + '</div>' +
+    (d && d.scan ? '<button class="scanbtn" id="s' + i + '">' + esc(t.scan) + '</button>' : '') +
+    '<div class="minorbox">' +
+      '<label class="t" for="m' + i + '" style="text-transform:none;letter-spacing:0;font-size:.9rem;color:var(--ink);margin:0">' +
+        '<input type="checkbox" id="m' + i + '"' + (r.esMenor ? ' checked' : '') + '>' +
+        '<span>' + esc(t.minor) + '</span></label>' +
+      '<div id="ab' + i + '" style="display:' + (r.esMenor ? 'block' : 'none') + '">' +
+        '<label for="a' + i + '">' + esc(t.auth) + '</label>' +
+        '<input id="a' + i + '" type="text" value="' + esc(r.autorizadoPor) + '">' +
+      '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function render(){
+  t = T[LANG];
+  el('t-eyebrow').textContent = t.eyebrow;
+  el('t-h1').textContent = t.h1;
+  el('t-sub').textContent = t.sub;
+  el('t-privacy').innerHTML = t.privacy;
+  el('sendBtn').textContent = t.send;
+  el('camHint').textContent = t.camHint;
+  el('resline').textContent = DATA.resId + ' · ' + DATA.fecha + ' · ' + (DATA.jornadaLabel || DATA.jornada || '');
+
+  const byFila = {};
+  (DATA.rows || []).forEach(r => { byFila[r.fila] = r; });
+  let html = '';
+  for (let i = 1; i <= Math.max(1, DATA.personas); i++){
+    const r = byFila[i] || { nombre: i === 1 ? DATA.nombre : '', tipo:'', numero:'', esMenor:false, autorizadoPor:'' };
+    html += cardHtml(i, r);
+  }
+  el('cards').innerHTML = html;
+
+  for (let i = 1; i <= Math.max(1, DATA.personas); i++) wire(i);
+  updateProgress();
+}
+
+function wire(i){
+  const n = el('n'+i), tp = el('tp'+i), d = el('d'+i), m = el('m'+i), a = el('a'+i), s = el('s'+i);
+  const save = () => saveRow(i);
+  [n, d, a].forEach(x => { if (x) x.addEventListener('blur', save); });
+  tp.addEventListener('change', () => {
+    const cfgd = DOCS[tp.value];
+    el('h'+i).innerHTML = cfgd ? cfgd[LANG === 'EN' ? 'hintEn' : 'hintEs'] : '';
+    // The scan button only exists for types we can actually read, so re-render this card.
+    const wantScan = !!(cfgd && cfgd.scan), hasScan = !!el('s'+i);
+    if (wantScan !== hasScan) { redrawCard(i); return; }
+    save();
+  });
+  m.addEventListener('change', () => {
+    el('ab'+i).style.display = m.checked ? 'block' : 'none';
+    if (m.checked && !el('a'+i).value) { el('a'+i).focus(); return; }
+    save();
+  });
+  if (s) s.addEventListener('click', () => scanInto(i));
+}
+
+function readRow(i){
+  return { fila:i, nombre: el('n'+i).value.trim(), tipo: el('tp'+i).value,
+           numero: el('d'+i).value.trim(), esMenor: el('m'+i).checked,
+           autorizadoPor: (el('a'+i) ? el('a'+i).value.trim() : '') };
+}
+
+function redrawCard(i){
+  const r = readRow(i);
+  el('card'+i).outerHTML = cardHtml(i, r);
+  wire(i);
+  saveRow(i);
+}
+
+/* Per-row save: a fifteen-person group on rural data must never lose the whole list
+   to one dropped request. Empty rows are simply not sent. */
+async function saveRow(i){
+  const r = readRow(i);
+  const chip = el('chip'+i);
+  if (!r.nombre || !r.tipo || !r.numero) { chip.className = 'chip'; chip.textContent = t.pending; updateProgress(); return; }
+  chip.className = 'chip'; chip.textContent = t.saving;
+  try {
+    const out = await post(Object.assign({ action:'listadoSave' }, r));
+    if (out.ok) {
+      chip.className = 'chip ok'; chip.textContent = t.saved;
+      el('card'+i).classList.add('done');
+      DATA.complete = out.complete; DATA.ready = out.ready;
+    } else {
+      chip.className = 'chip err'; chip.textContent = out.message || 'Error';
+      el('card'+i).classList.remove('done');
+      if (out.code === 'MINOR_AUTH_REQUIRED' && el('a'+i)) el('a'+i).focus();
+    }
+  } catch (e) {
+    chip.className = 'chip err'; chip.textContent = 'Sin conexión';
+  }
+  updateProgress();
+}
+
+function updateProgress(){
+  let done = 0;
+  for (let i = 1; i <= Math.max(1, DATA.personas); i++){
+    const r = readRow(i);
+    if (r.nombre && r.tipo && r.numero && (!r.esMenor || r.autorizadoPor)) done++;
+  }
+  el('count').textContent = t.count(done, DATA.personas);
+  el('barfill').style.width = (DATA.personas ? (done / DATA.personas * 100) : 0) + '%';
+  el('sendBtn').disabled = !(done >= DATA.personas && DATA.personas > 0);
+}
+
+/* ── scanning: PDF417 on the back of the cédula ──────────────────────
+   Loaded lazily, so a guest who types never pays for the library. The parse is
+   deliberately conservative and NEVER saves on its own: the fields are filled and
+   the guest confirms, because a misread document number is worse than a typed one. */
+let ZXING = null;
+async function loadZxing(){
+  if (ZXING) return ZXING;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js';
+    s.onload = res; s.onerror = rej; document.head.appendChild(s);
+  });
+  ZXING = window.ZXing;
+  return ZXING;
+}
+
+/* The Colombian cédula PDF417 payload is not a documented public format and varies by
+   issuance era, so we extract conservatively: the longest 8-11 digit run is the document
+   number, and uppercase letter runs are name parts. Anything uncertain is left for the
+   guest to correct. */
+function parseCedula(text){
+  const out = { numero:'', nombre:'' };
+  const digits = (text.match(/\d{8,11}/g) || []).sort((a,b) => b.length - a.length);
+  if (digits.length) out.numero = digits[0];
+  const words = (text.match(/[A-ZÑÁÉÍÓÚ]{3,}/g) || []).filter(w =>
+    !/^(COLOMBIA|REPUBLICA|CEDULA|CIUDADANIA|IDENTIFICACION|NACIONAL|REGISTRADURIA)$/.test(w));
+  if (words.length >= 2) out.nombre = words.slice(0, 4).join(' ');
+  return out;
+}
+
+let camStream = null, camStop = false;
+async function scanInto(i){
+  const cam = el('cam'), video = el('camVideo');
+  let codeReader;
+  try {
+    const zx = await loadZxing();
+    const hints = new Map();
+    hints.set(zx.DecodeHintType.POSSIBLE_FORMATS, [zx.BarcodeFormat.PDF_417]);
+    hints.set(zx.DecodeHintType.TRY_HARDER, true);
+    codeReader = new zx.BrowserMultiFormatReader(hints);
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal:'environment' }, width:{ ideal:1920 }, height:{ ideal:1080 } } });
+  } catch (e) {
+    alert(t.noCam);
+    return;
+  }
+  cam.style.display = 'flex';
+  video.srcObject = camStream; await video.play().catch(()=>{});
+  camStop = false;
+  const close = () => {
+    camStop = true; cam.style.display = 'none';
+    try { codeReader.reset(); } catch (e) {}
+    if (camStream) { camStream.getTracks().forEach(tr => tr.stop()); camStream = null; }
+  };
+  el('camClose').onclick = close;
+
+  try {
+    const result = await codeReader.decodeOnceFromVideoDevice(undefined, 'camVideo');
+    if (camStop) return;
+    const parsed = parseCedula(String(result.getText() || ''));
+    close();
+    if (!parsed.numero) { alert(t.noScan); return; }
+    if (parsed.nombre && !el('n'+i).value.trim()) el('n'+i).value = parsed.nombre;
+    el('d'+i).value = parsed.numero;
+    el('tp'+i).value = 'CC';
+    el('chip'+i).className = 'chip'; el('chip'+i).textContent = t.confirm;
+    el('n'+i).focus();
+    updateProgress();
+  } catch (e) {
+    if (!camStop) { close(); alert(t.noScan); }
+  }
+}
+
+/* ── send ───────────────────────────────────────────────────────────── */
+el('sendBtn').addEventListener('click', async () => {
+  const btn = el('sendBtn'), msg = el('sendMsg');
+  btn.disabled = true; msg.className = 'msg'; msg.textContent = t.saving;
+  try {
+    const out = await post({ action:'listadoSend' });
+    if (out.ok) { msg.className = 'msg ok'; msg.textContent = out.message || t.sent; btn.textContent = t.sent; }
+    else { msg.className = 'msg err'; msg.textContent = out.message || 'Error'; btn.disabled = false; }
+  } catch (e) {
+    msg.className = 'msg err'; msg.textContent = 'Sin conexión'; btn.disabled = false;
+  }
+});
+
+/* ── init ───────────────────────────────────────────────────────────── */
+(async function init(){
+  if (!TOKEN) { el('cards').innerHTML = '<div class="center">Falta el enlace de tu reserva.</div>'; return; }
+  try {
+    const out = await api({ action:'listado', token: TOKEN });
+    if (!out.ok) throw new Error(out.error || 'error');
+    DATA = out.data;
+    LANG = String(DATA.idioma || 'ES').toUpperCase() === 'EN' ? 'EN' : 'ES';
+    document.documentElement.lang = LANG.toLowerCase();
+    render();
+    if (DATA.sent) { el('sendBtn').textContent = T[LANG].sent; el('sendBtn').disabled = true; }
+    console.log('[GNP] listado ' + LISTADO_BUILD + ' · ' + DATA.personas + ' visitante(s)');
+  } catch (e) {
+    el('cards').innerHTML = '<div class="center">No pudimos cargar tu reserva. Verifica el enlace del correo.</div>';
+  }
+})();
+</script>
+</body>
+</html>
