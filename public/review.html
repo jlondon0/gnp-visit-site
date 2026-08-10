@@ -225,7 +225,7 @@ async function loadReview() {
     document.getElementById('f2').textContent = d.email;
     document.getElementById('f3').textContent = d.whatsapp;
     document.getElementById('f4').textContent = d.fecha;
-    document.getElementById('f5').textContent = d.jornada;
+    document.getElementById('f5').textContent = (d.jornadaLabel || d.jornada);
     document.getElementById('f6').textContent = d.personas;
     document.getElementById('f7').textContent = d.servicios;
     document.getElementById('f8').textContent = d.requerimientos;
