@@ -104,7 +104,7 @@ function render(d) {
   document.getElementById('resId').textContent = d.reservationId;
   document.getElementById('metaLine').textContent = 'Estado: ' + d.estado + ' | Pago: ' + (d.paymentStatus || 'N/A');
   document.getElementById('fecha').textContent = d.fecha;
-  document.getElementById('jornada').textContent = d.jornada;
+  document.getElementById('jornada').textContent = (d.jornadaLabel || d.jornada);
   document.getElementById('personas').textContent = d.personas;
   document.getElementById('pago').textContent = d.paymentStatus || '—';
 
