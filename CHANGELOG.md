@@ -7,7 +7,7 @@ Newest first. Each entry states the symptom, the cause and the fix, per
 - The line first shipped as "Sketch With Light LLC", which is the brand styling
   rather than the registered entity. The signed Articles of Organization and
   Operating Agreement, and the bank beneficial-owner certification, all name the
-  entity as Sketchwithlight LLC - one word.
+  entity as SketchWithLight LLC - one word.
 - Now reads "Developed in the US by sketchwithlight LLC".
 - No registration mark used. No USPTO registration was found in company records;
   the only trade-name filing is a 2015 New Jersey county fictitious-name
