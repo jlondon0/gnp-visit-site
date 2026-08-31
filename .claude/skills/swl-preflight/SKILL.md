@@ -261,9 +261,21 @@ a defect to log, not a local peculiarity to work around.
 - **G7** — Config format drift. Standardise on `wrangler.jsonc`.
 - **G8** — JLP deploys on a 30-minute schedule, not on push.
 - **G9** — `swl-site` is not on Workers Builds.
-- **G10** — Retired Workers still on the account (`old-pxpns`, `demo-pxpns`,
-  `gnptst`, `qhabibi`, `habibi`). A dead Worker on a live name is how the wrong
-  thing ends up serving a hostname.
+- **G10** — *Corrected 2026-08-31.* Extra Workers on the account, but **most are
+  live, not retired**. Four of the five originally named (`habibi`, `old-pxpns`,
+  `demo-pxpns`, `gnptst`) are bound to custom domains and serve HTTP 200 with
+  real content; `habibi` is a live app with real user data. Only `qhabibi` is
+  unrouted and a clean deletion candidate. Nineteen Workers, not seventeen.
+  **An inventory taken by name is not an inventory** — read routes and response
+  codes before calling anything retired.
+- **G13** — **Live credentials served publicly by the Habibi frontend.**
+  `habibi.jorgelondonophoto.com` ships one Anthropic API key (108 chars,
+  hardcoded as `claudeKey`) and two jsonbin master keys to every visitor, since
+  ~2026-07-21. It calls `api.anthropic.com/v1/messages` straight from the
+  browser and references `habibi-backend` nowhere — so the seam built to keep
+  keys server-side is deployed, healthy and unused. `jlondon0/habibi` holds a
+  sanitized copy (no key ever committed) and the ordered fix; **rotation is
+  step 1 and is Jorge's.** Highest-severity open item in the estate.
 - **G11** — **The pXPNS baseline tolerates failures by count, not identity.**
   `scripts/run-tests.sh:56` is `[ "$FAILS" -le 2 ] && exit 0 || exit 1`, so any
   two failing assertions pass. It sits at exactly two today, so one more does
