@@ -264,5 +264,22 @@ a defect to log, not a local peculiarity to work around.
 - **G10** — Retired Workers still on the account (`old-pxpns`, `demo-pxpns`,
   `gnptst`, `qhabibi`, `habibi`). A dead Worker on a live name is how the wrong
   thing ends up serving a hostname.
+- **G11** — **The pXPNS baseline tolerates failures by count, not identity.**
+  `scripts/run-tests.sh:56` is `[ "$FAILS" -le 2 ] && exit 0 || exit 1`, so any
+  two failing assertions pass. It sits at exactly two today, so one more does
+  block — but the guard cannot tell a known-benign failure from a fresh
+  regression. **The push gate delegates to this verdict, so every automated push
+  in that repo inherits the tolerance.** Close by pinning the baseline to the
+  identity of the two known assertions rather than their count.
+- **G12** — pXPNS has no committed lockfile. `npm ci` fails; `fake-indexeddb` is
+  pinned to `"*"`. A clean clone is not reproducible, and a missing dependency
+  crashes two suites, which reads as red for an environment reason.
 
-Sequencing: G3/G7 first (minutes, no risk) → G5/G6 → G2 on GNP → G1 → G8 → G4.
+Sequencing: G3/G7 first (minutes, no risk) → G5/G6 → G12 → G11 → G2 on GNP →
+G1 → G8 → G4.
+
+**On the push gate's authority.** `.claude/hooks/gate-push.sh` blocks a push
+when the repo's own runner exits non-zero. It is a relay, not a judge: it is
+exactly as strict as the runner it calls, and a repo with no runner passes
+through with a warning. Strengthening a weak runner is the way to strengthen the
+gate — never loosen the gate to get a push through.
