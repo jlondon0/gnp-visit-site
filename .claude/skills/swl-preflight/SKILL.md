@@ -19,7 +19,7 @@ Know which one you are in before planning anything. Each reaches different thing
 | Lane | Runs on | Can reach | Cannot reach |
 |---|---|---|---|
 | **Cloud** — claude.ai/code session | Anthropic sandbox | GitHub, Anthropic API | Cloudflare, Google, the NAS, any LAN host, any vendor API |
-| **NAS** — local session using `ssh nas` | Synology DS920+ | Everything: Cloudflare (stored token), the working copies, deploy paths | — |
+| **NAS** — local session using `ssh nas` | Synology DS920+ | The working copies, GitHub (SSH key), Apps Script (clasp), every deploy path that runs there | **Cloudflare API** — `~/.swl-env` holds no token, found 2026-09-08 while sundowning a project. Anything needing the Cloudflare API is unverifiable from here until one is added. |
 | **Mac** — local session, no ssh | this Mac | SMB shares, photos, local files | the working copies (see below) |
 
 **In the Cloud lane, the git push *is* the deploy.** That is the documented
