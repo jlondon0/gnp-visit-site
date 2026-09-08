@@ -46,8 +46,16 @@ one filesystem.
 
 Never run `open smb://…` for a share that is already mounted: macOS does not
 reuse the existing mount when the server spec differs, it adds a second one at a
-`-1` suffix. AutoMounter mounts by hostname at login on both Macs; anything else
-mounting the same share is the duplicate.
+`-1` suffix. **Mount by name, never by address** — the server spec is a string to
+macOS, so an IP and a hostname for one machine are two sessions with two caches.
+AutoMounter mounts by hostname at login on both Macs; anything else mounting the
+same share is the duplicate.
+
+Resolved on 2026-09-07: the duplicates came from two **login items that were
+volumes rather than applications**, which macOS resolved using the address
+recorded in them and so claimed the canonical mount points by IP. Deleting them
+and restarting AutoMounter left one mount per share, by name. If a duplicate
+returns, look there first.
 
 So: **if the content matters, read it over ssh.** Anything a Mac must execute
 should be a small stable launcher that fetches the real thing over ssh, never a
