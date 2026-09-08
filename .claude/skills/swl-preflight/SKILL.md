@@ -27,17 +27,49 @@ bridge: Claude pushes, the platform builds. Do not attempt `wrangler`, `clasp`,
 or any vendor API call from the cloud sandbox — it will fail at the egress
 allowlist, not at auth, and the error will mislead you.
 
-**Never touch a repository over SMB.** `/Volumes/Projects` is case-insensitive
-and copying through it sets the executable bit on every file — that produced 95
-phantom modifications across two repos on 2026-08-28. The single working copy of
-every repository is `/volume1/Projects/<repo>`, reached with `ssh nas`. Neither
-Mac has a `~/Projects`; a command beginning `cd ~/Projects/...` is a defect.
+**Never touch a repository over SMB, and do not trust a read across it either.**
+`/Volumes/Projects` is case-insensitive and copying through it sets the
+executable bit on every file — 95 phantom modifications across two repos on
+2026-08-28. Worse, on 2026-09-07 the mount served a file's *previous* contents at
+the *current* file's exact size (15198 bytes both sides, with the changed line
+absent from the SMB view entirely) — the same client-cache aliasing that made
+`.git/config` return the bytes of `.git/index`. It is not only a git problem.
+
+The cause was almost certainly **the same volume mounted twice**: once by
+Tailscale IP and once by hostname, two SMB sessions with independent caches over
+one filesystem.
+
+```
+/Volumes/Projects    ←  //Londono@100.92.237.25/Projects
+/Volumes/Projects-1  ←  //Londono@nas.sketchwithlight.com/Projects
+```
+
+Never run `open smb://…` for a share that is already mounted: macOS does not
+reuse the existing mount when the server spec differs, it adds a second one at a
+`-1` suffix. AutoMounter mounts by hostname at login on both Macs; anything else
+mounting the same share is the duplicate.
+
+So: **if the content matters, read it over ssh.** Anything a Mac must execute
+should be a small stable launcher that fetches the real thing over ssh, never a
+script living on the share — a stale copy there cannot fix itself, because it
+predates the fix.
+
+The single working copy of every repository is `/volume1/Projects/<repo>`,
+reached with `ssh nas`. Neither Mac has a `~/Projects`; a command beginning
+`cd ~/Projects/...` is a defect.
 
 ### NAS lane mechanics
 
-- A non-login SSH command gets a minimal PATH. **Every** remote script begins:
-  `export PATH=$PATH:/usr/bin:/usr/local/bin` — otherwise `node`, `npm` and
-  `git` all report as not found.
+- **Use `ssh nas 'bash -lc "..."'`.** The NAS `~/.profile` now exports the full
+  PATH — `/usr/local/bin` for node and npm, `/volume1/Projects/Utilities/bin`
+  for `gh` — for non-interactive login shells, which is what `bash -lc` gets. It
+  used to set PATH only inside an `case $- in *i*` interactive guard, so every
+  remote command carried its own `export PATH=...` and any that forgot reported
+  `node: not found`. A bare `ssh nas 'node -v'` still gets a minimal PATH.
+- **`scp` to the NAS fails** (connection closed). Pipe instead:
+  `ssh nas 'cat > /volume1/path' < localfile`. A heredoc sent inline through
+  `ssh nas '...'` is mangled by the local zsh; write the script locally and pipe
+  it to `ssh nas 'bash -s'` or `ssh nas 'python3 -'`.
 - **`npx` does not exist.** Invoke local binaries directly:
   `./node_modules/.bin/wrangler`.
 - Every git remote there must be SSH, never HTTPS. HTTPS cannot authenticate on
@@ -154,7 +186,8 @@ how the wrong build wins.
 
 | Project | Repo | Mechanism | Trigger | Manual step |
 |---|---|---|---|---|
-| pXPNS | `jlondon0/pxpns` | Cloudflare Workers Builds | push to `main` | none |
+| pXPNS (web app) | `jlondon0/pxpns` | Cloudflare Workers Builds | push to `main` | none |
+| pXPNS (Apps Script) | `jlondon0/pxpns` `apps-script/` | `./scripts/apps-script.sh push` | run by hand | **pXPNS > Setup Workbook** in the Sheet |
 | GNP booking site | `jlondon0/gnp-visit-site` | Cloudflare Workers Builds | push to `main` | none |
 | GNP backend | `jlondon0/guayacan-reservations-updated` | clasp push to Apps Script | manual | **"Deploy > New version" in the editor** |
 | JLP site | `jlondon0/jlp-website` | GitHub Actions (`publish.yml`) | 30-min schedule + on demand | none, but not push-triggered |
@@ -165,6 +198,13 @@ how the wrong build wins.
 The toolbox and requests Workers deploy as **one release** from one repository.
 They share a version; deploying them separately is how `intake` sat a release
 behind.
+
+**Two artifacts, two paths.** pXPNS is the case that proves it matters: the web
+app deploys on push and `apps-script/Code.gs` does not, so 2.56 shipped a Rules
+schema to one and not the other and the workbook audit reported clean for a full
+release. Where a repo has a second artifact, it needs a second *checked* path —
+`preflight.sh` runs `apps-script.sh check` every time, and a box that cannot look
+says so rather than passing.
 
 **Target for all new projects:** GitHub repo, tests, Cloudflare Workers Builds
 Git integration. Push to `main` is the deploy.
@@ -190,6 +230,13 @@ Git integration. Push to `main` is the deploy.
 
 - **Never in Git.** `.env` per project, `.env.example` committed, secret
   scanning before commit.
+- **Credentials live on the NAS, once.** A token on a Mac is a token that exists
+  twice and drifts: on 2026-09-07 the Mac mini's clasp credential had expired
+  (`invalid_grant: invalid_rapt`), `gh` was authorised there and nowhere else,
+  and the NAS had no `gh` at all. `gh` now authenticates on the NAS by device
+  flow; clasp's credential is authorised on a Mac and copied to the NAS at mode
+  600, because clasp's headless flow uses Google's blocked OOB redirect. See
+  `docs/WORKSTATION.md` in pxpns.
 - Enumerate everything needed **before** asking, and ask once, in one message.
   The only legitimate asks are credentials only Jorge can mint and OAuth grants
   against his own accounts. Everything else is to be obtained, not requested.
