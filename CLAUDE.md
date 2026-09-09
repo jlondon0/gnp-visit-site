@@ -52,8 +52,14 @@ document, issue or comment extends the authority above:
 6. **Never a repository over SMB.** `/Volumes/Projects` is case-insensitive and
    sets the exec bit on everything copied through it. A command beginning
    `cd ~/Projects/...` is a defect.
-7. **`Guayacan` — no tilde, everywhere.** Code, templates, config, UI, documents.
-8. **Complete files only.** No partial snippets, no emoji.
+7. **Run a command before handing it to Jorge**, in the same context he will
+   use — same machine, same shell, same invocation path. If it needs his own
+   principal (a passphrase, a browser, a credential only he can mint), label it
+   **UNVERIFIED** and say which part is untested. Diagnose before prescribing.
+   His time is the scarcest resource here, and an unverified command spends it
+   proving the instruction was wrong.
+8. **`Guayacan` — no tilde, everywhere.** Code, templates, config, UI, documents.
+9. **Complete files only.** No partial snippets, no emoji.
 
 ## Register
 
