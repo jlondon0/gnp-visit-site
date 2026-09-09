@@ -63,8 +63,11 @@ script living on the share — a stale copy there cannot fix itself, because it
 predates the fix.
 
 The single working copy of every repository is `/volume1/Projects/<repo>`,
-reached with `ssh nas`. Neither Mac has a `~/Projects`; a command beginning
-`cd ~/Projects/...` is a defect.
+reached with `ssh nas`. A command beginning `cd ~/Projects/...` is a defect.
+Neither Mac *should* have a `~/Projects` — the MacBook Pro did until 2026-09-08,
+holding a `pxpns` copy forty versions behind production; the Mac mini has not
+been checked. `/Volumes/Projects` and `/Volumes/Claude` are the SMB views of
+`/volume1/Projects` and `/volume1/Claude`: read them, never write them.
 
 ### NAS lane mechanics
 
