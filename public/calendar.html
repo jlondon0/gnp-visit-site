@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: calendar v2.28.2 · 2026-08-07 -->
+<!-- GNP-BUILD: calendar v2.28.2a · 2026-09-13 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -127,9 +127,14 @@ a{color:inherit;}
 
 <script>
 /* ============ CONFIG ============ */
-// Same Apps Script Web App URL used by index.html.
-const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const CAL_BUILD = 'v2.28.2 · 2026-08-07';
+// Availability comes from this Worker's edge copy of the Apps Script calendar
+// (src/worker.js), not from Apps Script directly: the backend takes
+// seconds on a cold start and the page used to hang on it (SWL-KFMU).
+const API_BASE = '/api/calendar';
+const CAL_BUILD = 'v2.28.2a · 2026-09-13';
+// Give up on a month after this long and show the degraded notice with a
+// retry link, rather than leaving "Cargando..." on screen indefinitely.
+const FETCH_TIMEOUT_MS = 15000;
 // Friendly session labels for the remaining-spots tooltip; falls back to the raw key.
 const CONFIG_LABELS = {
   AMANECER: { ES: 'Amanecer', EN: 'Dawn' },
@@ -197,11 +202,17 @@ function changeMonth(delta){
 async function fetchMonth(year, month){
   const key = year + '-' + String(month+1).padStart(2,'0');
   if (cache[key]) return cache[key];
-  const res = await fetch(API_BASE + '?action=calendar&month=' + key);
-  const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'calendar error');
-  cache[key] = json.data;
-  return json.data;
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
+  try {
+    const res = await fetch(API_BASE + '?month=' + key, ctrl ? { signal: ctrl.signal } : undefined);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error || 'calendar error');
+    cache[key] = json.data;
+    return json.data;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 function dateStr(y,m,d){ return y + '-' + String(m+1).padStart(2,'0') + '-' + String(d).padStart(2,'0'); }

@@ -1,7 +1,12 @@
 {
   "name": "gnp-visit-site",
+  "main": "src/worker.js",
   "compatibility_date": "2026-08-01",
   "assets": {
-    "directory": "./public/"
+    "directory": "./public/",
+    "binding": "ASSETS"
+  },
+  "observability": {
+    "enabled": true
   }
 }

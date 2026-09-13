@@ -13,19 +13,61 @@ and the baseline you are starting from. A green build means an upload succeeded,
 not that the running artifact is current — confirm the version the deployed thing
 reports, not the one the build log claims.
 
-## Making the deployed-vs-repo check real
+## The deployed-vs-repo check
 
-`preflight.sh` cannot compare this repo to production until it is told how.
-Create `.swl-preflight`:
+`.swl-preflight` points `preflight.sh` at `calendar.html` and its `CAL_BUILD`
+marker. From the NAS or a Mac it fetches the live page and compares; from a
+cloud session the fetch is blocked at the egress proxy and the check reports
+the deployed version as unreadable, which is the lane, not the site.
 
-```sh
-URL=https://example.com
-VERSION_FILE=src/index.html
-VERSION_GREP='const APP_VERSION = "\([^"]*\)"'
+## What deploys
+
+Two things, from one `wrangler deploy` that Workers Builds runs on every push
+to `main`:
+
+- `public/` as Workers Static Assets (the pages, images, logos).
+- `src/worker.js` as the Worker script, bound to those assets as `ASSETS`. It
+  answers `GET /api/calendar?month=YYYY-MM` from an edge copy of the Apps
+  Script calendar (SWL-KFMU) and hands every other path to the assets.
+
+No package.json, so Workers Builds uses its own wrangler and no install step.
+The suite runs `wrangler deploy --dry-run` when a binary is available
+(`WRANGLER_BIN=/path/to/wrangler ./tests/run.sh`); that is the same bundling
+the build host does, minus the upload.
+
+### /api/calendar
+
+| Copy age | Served | Backend |
+|---|---|---|
+| under 5 min | edge copy | not called |
+| 5 min to 24 h | edge copy at once | refreshed in the background |
+| any age, backend failing | last good copy | logged, copy kept |
+| nothing cached, backend failing | 502 `{ok:false}` | nothing stored |
+
+Only an `ok:true` answer is stored. `x-gnp-cache: hit | stale | miss` and
+`age` on the response say which row applied. The Apps Script URL lives in
+`src/worker.js` as `UPSTREAM`; `index.html` still calls the same web app
+directly for `config`, `availability` and the booking POST.
+
+The cache is the Workers Cache API: per data centre, no binding, nothing to
+create. To make the copy global and survive evictions, create a KV namespace in
+the dashboard, add its id under `kv_namespaces` in `wrangler.jsonc` with
+binding `CALENDAR`, and switch `storeCopy` / `cache.match` in `src/worker.js`
+to `env.CALENDAR.put` / `get` with the same fetched-at metadata. A namespace
+cannot be created by a push, which is why the first version uses the Cache API.
+
+### Verifying a deploy of the calendar
+
+From a machine outside the cloud lane:
+
+```bash
+curl -sS -D - -o /dev/null 'https://visit.guayacanpreserve.com/api/calendar?month=2026-10' | grep -iE '^(HTTP|x-gnp-cache|age)'
+curl -sS 'https://visit.guayacanpreserve.com/calendar.html' | grep -o "const CAL_BUILD = '[^']*'"
 ```
 
-Until then it reports that check as NOT CHECKED, which is the honest answer and
-not the same as passing.
+The first call after a deploy reports `x-gnp-cache: miss` and takes as long as
+Apps Script does; the second reports `hit` in well under a second. The build
+marker must match `public/calendar.html`.
 
 ## Rolling back
 
