@@ -10,9 +10,10 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   by hand with `wrangler deploy` and held in no repository. Its page loads every
   image by absolute URL from `https://gnp.guayacanpreserve.com/`, and this site's
   chat widget loaded `bird-body.png` and `bird-wing.png` from
-  `https://guayacanpreserve.com/` the same way. That Worker stopped serving its
-  images (redeployed without them, or the hostname lost its route; not
-  observable from the cloud lane), and both sites lost them together.
+  `https://guayacanpreserve.com/` the same way. Confirmed from the Mac on
+  2026-09-13: `gnp.guayacanpreserve.com` had no DNS record at all (its custom
+  domain was gone), and the `gnp` Worker never held the photos itself (404 on
+  `www.guayacanpreserve.com/gallery-2.jpg`). Both sites lost them together.
 - Fix here: the marketing image set (`birdwatchers.jpg`, `hero-forest-mist.jpg`,
   `gallery-1-wide.jpg`, `gallery-2.jpg` .. `gallery-7.jpg`, plus the marketing
   `logo.png` and `logo-icon.png` as `site-logo.png` and `site-logo-icon.png`)
@@ -40,7 +41,10 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   a resized wing each turn the suite red. Closes part of gap G5.
 - `.gitignore` added (`@eaDir/`, `.DS_Store`, `.env*`, `node_modules/`).
 - Version markers untouched; this repo tracks the GNP platform version.
-- The main site itself still needs one Mac-lane action; see DEPLOY.md.
+- Resolved 2026-09-13: `gnp.guayacanpreserve.com` added as a custom domain of
+  this Worker in the Cloudflare dashboard (path A). Verified from the Mac:
+  `https://gnp.guayacanpreserve.com/gallery-2.jpg` returns 200. That hostname
+  is now a production dependency of the main website; see DEPLOY.md.
 
 ## 2026-08-04 - correct the legal entity name in the attribution line
 - The line first shipped as "Sketch With Light LLC", which is the brand styling
