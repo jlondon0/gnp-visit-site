@@ -41,6 +41,10 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   a resized wing each turn the suite red. Closes part of gap G5.
 - `.gitignore` added (`@eaDir/`, `.DS_Store`, `.env*`, `node_modules/`).
 - Version markers untouched; this repo tracks the GNP platform version.
+- Later 2026-09-13: `bird-body.png` and `bird-wing.png` replaced with the
+  original cutouts from `jlondon0/gnp-site`, which turned out to hold them.
+  The main site now serves its own images, so the custom domain below is a
+  safety net, not a dependency; see DEPLOY.md.
 - Resolved 2026-09-13: `gnp.guayacanpreserve.com` added as a custom domain of
   this Worker in the Cloudflare dashboard (path A). Verified from the Mac:
   `https://gnp.guayacanpreserve.com/gallery-2.jpg` returns 200. That hostname
