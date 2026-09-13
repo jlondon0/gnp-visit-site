@@ -1,0 +1,13 @@
+# Synology metadata
+@eaDir/
+.DS_Store
+
+# secrets and environments
+.env
+.env.*
+.swl-env
+
+# dependencies and build output
+node_modules/
+.wrangler/
+dist/
