@@ -45,7 +45,9 @@ the build host does, minus the upload.
 | nothing cached, backend failing | 502 `{ok:false}` | nothing stored |
 
 Only an `ok:true` answer is stored. `x-gnp-cache: hit | stale | miss` and
-`age` on the response say which row applied. The Apps Script URL lives in
+`age` on the response say which row applied; `x-gnp-worker` names the Worker
+build serving it. A stale month starts one background refresh per data centre
+per `REFRESH_GAP_MS` (30 s), not one per visitor. The Apps Script URL lives in
 `src/worker.js` as `UPSTREAM`; `index.html` still calls the same web app
 directly for `config`, `availability` and the booking POST.
 
@@ -58,10 +60,18 @@ cannot be created by a push, which is why the first version uses the Cache API.
 
 ### Verifying a deploy of the calendar
 
+From a cloud session: run `live-check.yml` (Actions, live-check, Run workflow;
+or the Actions API with `ref` set to the branch holding the checkout) once the
+push to `main` has built. It runs on a GitHub-hosted runner, which reaches both
+Cloudflare and Google. It times Apps Script directly as the baseline, fails
+until the deployed `x-gnp-worker` header equals `WORKER_BUILD` in
+`src/worker.js`, then requires a well-formed month, a cached answer under
+1.5 s, and the live `calendar.html` build marker equal to the checkout's.
+
 From a machine outside the cloud lane:
 
 ```bash
-curl -sS -D - -o /dev/null 'https://visit.guayacanpreserve.com/api/calendar?month=2026-10' | grep -iE '^(HTTP|x-gnp-cache|age)'
+curl -sS -D - -o /dev/null 'https://visit.guayacanpreserve.com/api/calendar?month=2026-10' | grep -iE '^(HTTP|x-gnp-cache|x-gnp-worker|age)'
 curl -sS 'https://visit.guayacanpreserve.com/calendar.html' | grep -o "const CAL_BUILD = '[^']*'"
 ```
 

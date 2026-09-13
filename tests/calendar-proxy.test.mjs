@@ -6,7 +6,8 @@
 //   node tests/calendar-proxy.test.mjs
 
 import assert from 'node:assert/strict';
-import worker, { handleCalendar, FRESH_MS, STALE_MS, UPSTREAM } from '../src/worker.js';
+import worker, { handleCalendar, FRESH_MS, STALE_MS, REFRESH_GAP_MS, UPSTREAM, WORKER_BUILD } from '../src/worker.js';
+import { readFileSync } from 'node:fs';
 
 const GOOD = JSON.stringify({ ok: true, data: { minDaysAdvance: 7, days: { '2026-10-03': { status: 'open', remaining: { AMANECER: 6 } } } } });
 
@@ -83,6 +84,38 @@ await test('a stale hit is served at once and refreshed behind the visitor', asy
   assert.equal(h.state.calls.length, 2, 'background refresh did not reach the backend');
   const again = await h.call('2026-10');
   assert.equal(again.headers.get('x-gnp-cache'), 'hit', 'refresh did not renew the copy');
+});
+
+await test('many stale hits inside one gap start one backend refresh, not one each', async () => {
+  const h = harness();
+  await h.call('2026-10');
+  h.state.now += FRESH_MS + 1000;
+  let release; const gate = new Promise((r) => { release = r; });
+  const slowCalls = [];
+  h.deps.fetch = async (url) => { slowCalls.push(url); await gate; return new Response(GOOD, { status: 200 }); };
+  const tick = () => new Promise((r) => setImmediate(r));
+  for (let i = 0; i < 20; i++) {
+    assert.equal((await h.call('2026-10')).headers.get('x-gnp-cache'), 'stale');
+    await tick(); await tick();
+  }
+  assert.equal(slowCalls.length, 1, 'a burst of stale hits reached the backend ' + slowCalls.length + ' times');
+  release();
+  await Promise.all(h.state.pending);
+  assert.equal((await h.call('2026-10')).headers.get('x-gnp-cache'), 'hit', 'the one refresh did not renew the copy');
+  h.state.now += FRESH_MS + REFRESH_GAP_MS + 1000;
+  assert.equal((await h.call('2026-10')).headers.get('x-gnp-cache'), 'stale');
+  await Promise.all(h.state.pending);
+  assert.equal(slowCalls.length, 2, 'after the gap a stale hit did not refresh again');
+});
+
+await test('every answer names the Worker build, which is recorded in the changelog', async () => {
+  assert.match(WORKER_BUILD, /^calendar-cache v\d+\.\d+\.\d+[a-z]? · \d{4}-\d{2}-\d{2}$/);
+  const h = harness();
+  assert.equal((await h.call('2026-10')).headers.get('x-gnp-worker'), WORKER_BUILD);
+  assert.equal((await h.call('2026-10')).headers.get('x-gnp-worker'), WORKER_BUILD);
+  assert.equal((await h.call('bad')).headers.get('x-gnp-worker'), WORKER_BUILD);
+  const changelog = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8');
+  assert.ok(changelog.includes(WORKER_BUILD), 'CHANGELOG.md does not name ' + WORKER_BUILD);
 });
 
 await test('backend down with a stale copy: the copy is served, not an error', async () => {

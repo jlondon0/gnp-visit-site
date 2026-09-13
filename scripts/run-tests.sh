@@ -69,6 +69,13 @@ if command -v node >/dev/null 2>&1; then
   if node tests/calendar-proxy.test.mjs 2>/dev/null | grep -q 'calendar-proxy: all'; then ok; else
     bad "tests/calendar-proxy.test.mjs is red:"; node tests/calendar-proxy.test.mjs 2>&1 | grep -E 'FAIL|^ {7}' | head -12 | sed 's/^/    /'
   fi
+  # The shipped page script against a stub DOM: requests go to /api/calendar,
+  # a saved month paints before the network answers, a failed network with a
+  # saved month keeps the grid (SWL-KFMU follow-up).
+  PAGE_OUT=$(node --test tests/calendar-page.test.mjs 2>&1)
+  if [ $? -eq 0 ] && printf '%s\n' "$PAGE_OUT" | grep -q '^# fail 0$'; then ok; else
+    bad "tests/calendar-page.test.mjs is red:"; printf '%s\n' "$PAGE_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
+  fi
 else
   bad "node is not on PATH; the Worker contract cannot be checked here"
 fi

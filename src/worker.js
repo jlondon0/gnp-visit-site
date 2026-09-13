@@ -28,12 +28,17 @@
  * needs a namespace created in the dashboard first.
  */
 
+// Single source of the Worker's version, reported on every /api/calendar
+// answer as x-gnp-worker so a deploy can be checked against the repo.
+export const WORKER_BUILD = 'calendar-cache v1.0.1 · 2026-09-13';
+
 export const UPSTREAM =
   'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
 
 export const FRESH_MS = 5 * 60 * 1000;       // serve without asking the backend
 export const STALE_MS = 24 * 60 * 60 * 1000; // serve while refreshing behind the visitor
 export const UPSTREAM_TIMEOUT_MS = 25 * 1000; // Apps Script cold starts are slow, not infinite
+export const REFRESH_GAP_MS = 30 * 1000;      // one background refresh per stale month per data centre per gap
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 const CACHE_ORIGIN = 'https://gnp-visit-site.cache';
@@ -42,6 +47,7 @@ function json(body, status, extra) {
   const headers = {
     'content-type': 'application/json; charset=utf-8',
     'access-control-allow-origin': '*',
+    'x-gnp-worker': WORKER_BUILD,
     'cache-control': status === 200 ? 'public, max-age=60' : 'no-store',
   };
   for (const k in (extra || {})) headers[k] = extra[k];
@@ -74,13 +80,14 @@ async function fetchUpstream(month, fetchImpl) {
   return text;
 }
 
-async function storeCopy(cache, month, text, fetchedAt) {
+async function storeCopy(cache, month, text, fetchedAt, refreshingAt) {
   await cache.put(cacheKey(month), new Response(text, {
     status: 200,
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'public, s-maxage=' + Math.floor(STALE_MS / 1000),
       'x-gnp-fetched-at': String(fetchedAt),
+      'x-gnp-refreshing-at': String(refreshingAt || 0),
     },
   }));
 }
@@ -116,8 +123,15 @@ export async function handleCalendar(request, ctx, deps) {
       return new Response(text, { status: 200, headers: json({}, 200, {
         'x-gnp-cache': 'hit', 'age': String(Math.floor(age / 1000)) }).headers });
     }
-    // Stale: answer now, refresh behind the visitor.
-    ctx.waitUntil(refresh(cache, month, deps));
+    // Stale: answer now, refresh behind the visitor. Every stale hit in the
+    // same data centre would otherwise start its own backend call, and a
+    // busy minute after the copy ages is exactly when Apps Script answers
+    // "Service invoked too many times": the first stale hit re-stores the
+    // copy stamped as refreshing, and the rest within REFRESH_GAP_MS ride it.
+    const refreshingAt = Number(hit.headers.get('x-gnp-refreshing-at')) || 0;
+    if (now - refreshingAt > REFRESH_GAP_MS) {
+      ctx.waitUntil(storeCopy(cache, month, text, fetchedAt, now).then(() => refresh(cache, month, deps)));
+    }
     return new Response(text, { status: 200, headers: json({}, 200, {
       'x-gnp-cache': 'stale', 'age': String(Math.floor(age / 1000)) }).headers });
   }
