@@ -38,6 +38,13 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   out empty. The job now extracts the URL by shape and fails loudly on an empty
   marker; the runner exercises the same three expressions against the checkout
   so a reformat is caught before the push.
+- Second run on main (34776345783), measured from a GitHub runner: Apps Script
+  asked directly answered the current month in 2.28 s, 6.03 s and 1.51 s over
+  three attempts; the deployed Worker reported `calendar-cache v1.0.1`, the
+  checkout's; `/api/calendar` answered `hit` in 0.120 s and 0.123 s. Its last
+  step read no marker from the live `calendar.html` because it fetched the
+  `.html` path without following the redirect Static Assets issues to the
+  extensionless path; the step now follows redirects and prints the status.
 
 ## 2026-09-13 - SWL-KFMU: calendar takes too long to load, then shows an error
 - Symptom: on https://visit.guayacanpreserve.com/calendar.html the grid sat on
