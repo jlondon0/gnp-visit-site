@@ -3,6 +3,23 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-09-13 - SWL-FSBY: images missing on guayacanpreserve.com - not served by this repo
+- Reported: every image gone from https://guayacanpreserve.com/ while browsing.
+- Finding: this repo serves the booking site (visit.guayacanpreserve.com) only.
+  The main website is a separate Cloudflare Worker named `gnp` (Workers Static
+  Assets from its own `public/`, deployed by hand with `wrangler deploy`, no
+  GitHub repository reachable from the cloud lane). Its page loads every image
+  by absolute URL from `https://gnp.guayacanpreserve.com/`, and this repo's chat
+  widget loads `bird-body.png` and `bird-wing.png` from `https://guayacanpreserve.com/`
+  the same way. One Worker losing its assets, or one hostname losing its route,
+  blanks both sites at once while the HTML still serves.
+- Not fixed here: the cloud lane cannot reach any guayacanpreserve.com host
+  (egress 403), the `gnp` Worker source is not in a reachable repository, and
+  the two bird PNGs exist nowhere reachable (not in git history, Drive or mail).
+  A July 2026 snapshot of the marketing site source and images is in Drive under
+  "GNP latest site" / "guayacan-gnp-worker". Restore path recorded in DEPLOY.md.
+- No code change. Version markers untouched.
+
 ## 2026-08-04 - correct the legal entity name in the attribution line
 - The line first shipped as "Sketch With Light LLC", which is the brand styling
   rather than the registered entity. The signed Articles of Organization and
