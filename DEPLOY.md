@@ -50,6 +50,16 @@ repository; a July 2026 snapshot of its source is in Drive under
 
 ## gnp.guayacanpreserve.com is a custom domain of this Worker
 
+Update 2026-09-13, later the same day: the main website now serves its own
+images from its own repository (`jlondon0/gnp-site`, Workers Builds), so
+nothing references this host any more. The domain and the marketing image set
+in `public/` can be removed once the main site has been observed serving its
+photos for a week; the suite's manifest check goes with them. Until then they
+are a harmless safety net.
+
+The chat bird pair here is the original artwork copied from `gnp-site`
+(256 px), replacing the reconstruction shipped earlier the same day.
+
 Since 2026-09-13 (SWL-FSBY) the main website's image host,
 `gnp.guayacanpreserve.com`, is a Custom Domain on `gnp-visit-site`, alongside
 `visit.guayacanpreserve.com`. Removing it from Domains & Routes takes every
