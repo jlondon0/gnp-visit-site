@@ -1,129 +1,149 @@
-// gnp-visit-site Worker.
-//
-// Serves ./public/ as static assets and puts an edge cache in front of the
-// Apps Script calendar endpoint (SWL-KFMU). Apps Script answers a calendar
-// month in several seconds on a good day and with an HTML error page on a bad
-// one; the calendar page waited on every visit. Now the first visitor at a
-// Cloudflare colo pays that cost once, the answer is kept for a week, and any
-// later visitor gets it in milliseconds while the Worker asks Apps Script
-// again in the background whenever the copy is older than FRESH_SECONDS.
-//
-// Cache API is per-colo and needs no binding, so this deploys with nothing
-// created by hand. A KV-backed shared copy is the documented upgrade path in
-// DEPLOY.md if per-colo misses ever matter.
+/*
+ * gnp-visit-site Worker.
+ *
+ * Static pages come from ./public/ (Workers Static Assets). This script adds
+ * one endpoint in front of the Apps Script backend:
+ *
+ *   GET /api/calendar?month=YYYY-MM
+ *
+ * The backend computes a month of availability from the bookings sheet and
+ * answers in several seconds on a cold start, which is what SWL-KFMU reported:
+ * the calendar page sat on "Cargando disponibilidad..." and then showed its
+ * degraded notice. This endpoint keeps a copy of every month at the Cloudflare
+ * edge and serves it in milliseconds:
+ *
+ *   - fresher than FRESH_MS      served as is
+ *   - older, within STALE_MS     served at once, refreshed in the background
+ *   - backend down               the last good copy is served, however old
+ *   - nothing cached, backend down   502 with { ok:false }, never cached
+ *
+ * Only a response the backend marked ok:true is ever stored, so an error can
+ * not be pinned in the cache. An invalid month is refused, not passed upstream.
+ *
+ * The cache is the Workers Cache API, which needs no binding and no dashboard
+ * step: a push to main deploys this file. It is per data centre, so the first
+ * visitor in each region after a deploy pays one backend round trip; the copy
+ * then serves everyone behind that data centre. KV would make the copy global
+ * and survive evictions; that is the documented next step in DEPLOY.md and
+ * needs a namespace created in the dashboard first.
+ */
 
-export const WORKER_BUILD = 'calendar-cache v1.0.0 · 2026-09-13';
+export const UPSTREAM =
+  'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
 
-// Same Apps Script Web App the pages call directly for every other action.
-export const UPSTREAM = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-
-export const FRESH_SECONDS = 300;          // served as-is, upstream not asked
-export const STALE_SECONDS = 7 * 86400;    // served while upstream is asked again in the background
-export const REVALIDATE_GAP_SECONDS = 30;  // at most one background refresh per gap per colo
-export const UPSTREAM_TIMEOUT_MS = 25000;
+export const FRESH_MS = 5 * 60 * 1000;       // serve without asking the backend
+export const STALE_MS = 24 * 60 * 60 * 1000; // serve while refreshing behind the visitor
+export const UPSTREAM_TIMEOUT_MS = 25 * 1000; // Apps Script cold starts are slow, not infinite
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
-const JSON_TYPE = 'application/json; charset=utf-8';
+const CACHE_ORIGIN = 'https://gnp-visit-site.cache';
+
+function json(body, status, extra) {
+  const headers = {
+    'content-type': 'application/json; charset=utf-8',
+    'access-control-allow-origin': '*',
+    'cache-control': status === 200 ? 'public, max-age=60' : 'no-store',
+  };
+  for (const k in (extra || {})) headers[k] = extra[k];
+  return new Response(JSON.stringify(body), { status, headers });
+}
+
+function cacheKey(month) {
+  return new Request(CACHE_ORIGIN + '/calendar/' + month, { method: 'GET' });
+}
+
+/* Ask the backend for one month. Resolves to the raw JSON text only when the
+ * backend answered ok:true; rejects on anything else so the caller never
+ * stores an error. */
+async function fetchUpstream(month, fetchImpl) {
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout
+    ? AbortSignal.timeout(UPSTREAM_TIMEOUT_MS) : undefined;
+  const res = await fetchImpl(UPSTREAM + '?action=calendar&month=' + month, {
+    redirect: 'follow',
+    signal,
+    headers: { accept: 'application/json' },
+  });
+  if (!res.ok) throw new Error('upstream HTTP ' + res.status);
+  const text = await res.text();
+  let parsed;
+  try { parsed = JSON.parse(text); }
+  catch (e) { throw new Error('upstream returned non-JSON'); }
+  if (!parsed || parsed.ok !== true || typeof parsed.data !== 'object') {
+    throw new Error((parsed && parsed.error) || 'upstream returned ok:false');
+  }
+  return text;
+}
+
+async function storeCopy(cache, month, text, fetchedAt) {
+  await cache.put(cacheKey(month), new Response(text, {
+    status: 200,
+    headers: {
+      'content-type': 'application/json; charset=utf-8',
+      'cache-control': 'public, s-maxage=' + Math.floor(STALE_MS / 1000),
+      'x-gnp-fetched-at': String(fetchedAt),
+    },
+  }));
+}
+
+/* Fetch a month from the backend and store it. Returns the text, or null when
+ * the backend failed (already logged). */
+async function refresh(cache, month, deps) {
+  try {
+    const text = await fetchUpstream(month, deps.fetch);
+    await storeCopy(cache, month, text, deps.now());
+    return text;
+  } catch (err) {
+    console.warn('[calendar] backend failed for ' + month + ': ' + (err && err.message));
+    return null;
+  }
+}
+
+export async function handleCalendar(request, ctx, deps) {
+  const url = new URL(request.url);
+  const month = url.searchParams.get('month') || '';
+  if (!MONTH_RE.test(month)) {
+    return json({ ok: false, error: 'month must be YYYY-MM' }, 400);
+  }
+
+  const cache = deps.cache;
+  const now = deps.now();
+  const hit = await cache.match(cacheKey(month));
+  if (hit) {
+    const fetchedAt = Number(hit.headers.get('x-gnp-fetched-at')) || 0;
+    const age = now - fetchedAt;
+    const text = await hit.text();
+    if (age <= FRESH_MS) {
+      return new Response(text, { status: 200, headers: json({}, 200, {
+        'x-gnp-cache': 'hit', 'age': String(Math.floor(age / 1000)) }).headers });
+    }
+    // Stale: answer now, refresh behind the visitor.
+    ctx.waitUntil(refresh(cache, month, deps));
+    return new Response(text, { status: 200, headers: json({}, 200, {
+      'x-gnp-cache': 'stale', 'age': String(Math.floor(age / 1000)) }).headers });
+  }
+
+  const text = await refresh(cache, month, deps);
+  if (text === null) {
+    return json({ ok: false, error: 'availability backend unavailable' }, 502,
+      { 'x-gnp-cache': 'miss' });
+  }
+  return new Response(text, { status: 200, headers: json({}, 200, {
+    'x-gnp-cache': 'miss', 'age': '0' }).headers });
+}
 
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname === '/api/calendar') return calendar(request, url, ctx);
-    return env.ASSETS.fetch(request);
-  }
-};
-
-function jsonResponse(status, body, extra) {
-  const headers = new Headers({ 'content-type': JSON_TYPE, 'cache-control': 'no-store', 'x-gnp-worker': WORKER_BUILD });
-  for (const k in (extra || {})) headers.set(k, extra[k]);
-  return new Response(typeof body === 'string' ? body : JSON.stringify(body), { status, headers });
-}
-
-function cacheKeyFor(url, month) {
-  return new Request(url.origin + '/api/calendar?month=' + month, { method: 'GET' });
-}
-
-async function calendar(request, url, ctx) {
-  if (request.method !== 'GET') return jsonResponse(405, { ok: false, error: 'GET only' }, { allow: 'GET' });
-  const month = url.searchParams.get('month') || '';
-  if (!MONTH_RE.test(month)) return jsonResponse(400, { ok: false, error: 'month must be YYYY-MM' });
-
-  const cache = caches.default;
-  const key = cacheKeyFor(url, month);
-  const now = Date.now();
-  const hit = await cache.match(key);
-
-  if (hit) {
-    const fetchedAt = Number(hit.headers.get('x-gnp-fetched-at')) || 0;
-    const ageSeconds = Math.max(0, Math.round((now - fetchedAt) / 1000));
-    const state = ageSeconds <= FRESH_SECONDS ? 'HIT' : 'STALE';
-    if (state === 'STALE') {
-      const revalidatingAt = Number(hit.headers.get('x-gnp-revalidating-at')) || 0;
-      if (now - revalidatingAt > REVALIDATE_GAP_SECONDS * 1000) {
-        ctx.waitUntil(revalidate(cache, key, hit.clone(), month, now));
+    if (url.pathname === '/api/calendar') {
+      if (request.method !== 'GET' && request.method !== 'HEAD') {
+        return json({ ok: false, error: 'method not allowed' }, 405);
       }
+      return handleCalendar(request, ctx, {
+        cache: caches.default,
+        fetch: (u, init) => fetch(u, init),
+        now: () => Date.now(),
+      });
     }
-    return jsonResponse(200, await hit.text(), {
-      'x-gnp-cache': state,
-      'x-gnp-age': String(ageSeconds),
-      'x-gnp-upstream-ms': hit.headers.get('x-gnp-upstream-ms') || ''
-    });
-  }
-
-  let fetched;
-  try { fetched = await fetchUpstream(month); }
-  catch (err) {
-    return jsonResponse(502, { ok: false, error: 'upstream: ' + (err && err.message || err) }, { 'x-gnp-cache': 'MISS' });
-  }
-  await cache.put(key, storable(fetched, now));
-  return jsonResponse(200, fetched.body, { 'x-gnp-cache': 'MISS', 'x-gnp-age': '0', 'x-gnp-upstream-ms': String(fetched.ms) });
-}
-
-// Mark the entry as being refreshed so the next STALE hits in the gap do not
-// each start their own upstream call, then replace it when upstream answers.
-// A failed refresh leaves the stale copy in place: old availability with a
-// retry pending beats an error page.
-async function revalidate(cache, key, stale, month, now) {
-  const marker = new Response(stale.body, { headers: new Headers(stale.headers) });
-  marker.headers.set('x-gnp-revalidating-at', String(now));
-  await cache.put(key, marker);
-  try {
-    const fetched = await fetchUpstream(month);
-    await cache.put(key, storable(fetched, Date.now()));
-  } catch (err) {
-    console.warn('calendar revalidate failed for ' + month + ': ' + (err && err.message || err));
-  }
-}
-
-function storable(fetched, at) {
-  return new Response(fetched.body, {
-    headers: {
-      'content-type': JSON_TYPE,
-      'cache-control': 'public, max-age=' + STALE_SECONDS,
-      'x-gnp-fetched-at': String(at),
-      'x-gnp-upstream-ms': String(fetched.ms)
-    }
-  });
-}
-
-// Resolves to { body, ms } only for a well-formed calendar payload. Anything
-// else - a timeout, an HTML error page, a JSON error - rejects, so a bad
-// answer never displaces a good cached one.
-export async function fetchUpstream(month) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), UPSTREAM_TIMEOUT_MS);
-  const started = Date.now();
-  try {
-    const res = await fetch(UPSTREAM + '?action=calendar&month=' + month, { redirect: 'follow', signal: ctrl.signal });
-    const text = await res.text();
-    if (!res.ok) throw new Error('HTTP ' + res.status + ' ' + text.slice(0, 120));
-    let json;
-    try { json = JSON.parse(text); } catch (e) { throw new Error('not JSON: ' + text.slice(0, 120)); }
-    if (!json || json.ok !== true || !json.data || typeof json.data !== 'object') {
-      throw new Error((json && json.error) || 'calendar payload not ok');
-    }
-    return { body: JSON.stringify(json), ms: Date.now() - started };
-  } finally {
-    clearTimeout(timer);
-  }
-}
+    return env.ASSETS.fetch(request);
+  },
+};

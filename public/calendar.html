@@ -127,9 +127,14 @@ a{color:inherit;}
 
 <script>
 /* ============ CONFIG ============ */
-// Same Apps Script Web App URL used by index.html; the chat widget posts to it.
-const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+// Availability comes from this Worker's edge copy of the Apps Script calendar
+// (src/worker.js), not from Apps Script directly: the backend takes
+// seconds on a cold start and the page used to hang on it (SWL-KFMU).
+const API_BASE = '/api/calendar';
 const CAL_BUILD = 'v2.28.2a · 2026-09-13';
+// Give up on a month after this long and show the degraded notice with a
+// retry link, rather than leaving "Cargando..." on screen indefinitely.
+const FETCH_TIMEOUT_MS = 15000;
 // Friendly session labels for the remaining-spots tooltip; falls back to the raw key.
 const CONFIG_LABELS = {
   AMANECER: { ES: 'Amanecer', EN: 'Dawn' },
@@ -194,47 +199,19 @@ function changeMonth(delta){
   renderMonth();
 }
 
-// SWL-KFMU: the month payload is read through this Worker's edge cache
-// (src/worker.js), which answers in milliseconds once any visitor at the same
-// Cloudflare colo has loaded the month; Apps Script itself took seconds and
-// sometimes returned an error page. The last good answer is also kept in
-// localStorage so a returning visitor sees the grid at once while the fresh
-// copy loads. No availability request goes to script.google.com from here.
-const CAL_API = '/api/calendar';
-const FETCH_TIMEOUT_MS = 20000;
-const LOCAL_TTL_MS = 24 * 60 * 60 * 1000;
-const LOCAL_PREFIX = 'gnp.cal.';
-let renderSeq = 0;
-
-function monthKey(year, month){ return year + '-' + String(month+1).padStart(2,'0'); }
-
-function localGet(key){
-  try {
-    const raw = localStorage.getItem(LOCAL_PREFIX + key);
-    if (!raw) return null;
-    const o = JSON.parse(raw);
-    if (!o || !o.data || !o.data.days || (Date.now() - o.at) > LOCAL_TTL_MS) return null;
-    return o.data;
-  } catch (e) { return null; }
-}
-function localPut(key, data){
-  try { localStorage.setItem(LOCAL_PREFIX + key, JSON.stringify({ at: Date.now(), data: data })); } catch (e) {}
-}
-
 async function fetchMonth(year, month){
-  const key = monthKey(year, month);
+  const key = year + '-' + String(month+1).padStart(2,'0');
   if (cache[key]) return cache[key];
-  const ctrl = new AbortController();
-  const timer = setTimeout(function(){ ctrl.abort(); }, FETCH_TIMEOUT_MS);
+  const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
   try {
-    const res = await fetch(CAL_API + '?month=' + key, { signal: ctrl.signal });
+    const res = await fetch(API_BASE + '?month=' + key, ctrl ? { signal: ctrl.signal } : undefined);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'calendar error');
     cache[key] = json.data;
-    localPut(key, json.data);
     return json.data;
   } finally {
-    clearTimeout(timer);
+    if (timer) clearTimeout(timer);
   }
 }
 
@@ -242,34 +219,21 @@ function dateStr(y,m,d){ return y + '-' + String(m+1).padStart(2,'0') + '-' + St
 
 async function renderMonth(){
   const t = I18N[LANG];
-  const seq = ++renderSeq;
   document.getElementById('calTitle').textContent = t.months[viewMonth] + ' ' + viewYear;
+  document.getElementById('calBody').innerHTML = '<div class="loading">'+t.loading+'</div>';
+
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const isCurrentMonth = (viewYear === today.getFullYear() && viewMonth === today.getMonth());
   document.getElementById('prevBtn').disabled = isCurrentMonth;
 
-  const key = monthKey(viewYear, viewMonth);
-  let data = cache[key] || null, degraded = false;
-  if (!data) {
-    const saved = localGet(key);
-    if (saved) paintMonth(saved, false);
-    else document.getElementById('calBody').innerHTML = '<div class="loading">'+t.loading+'</div>';
-    try { data = await fetchMonth(viewYear, viewMonth); }
-    catch(err){
-      console.warn('calendar availability failed; degraded mode:', (err && err.message) || err);
-      degraded = true;
-      data = saved || { days: {}, minDaysAdvance: 7 };
-    }
+  let data, degraded = false;
+  try { data = await fetchMonth(viewYear, viewMonth); }
+  catch(err){
+    console.warn('calendar availability failed; degraded mode:', (err && err.message) || err);
+    degraded = true;
+    data = { days: {}, minDaysAdvance: 7 };
   }
-  if (seq !== renderSeq) return; // the visitor moved to another month while this one loaded
-  paintMonth(data, degraded);
 
-  // Warm the cache for the neighbouring months so navigation feels instant.
-  prefetchNeighbors();
-}
-
-function paintMonth(data, degraded){
-  const t = I18N[LANG];
-  const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const minAdvance = data.minDaysAdvance != null ? data.minDaysAdvance : 7;
   const minDate = new Date(today); minDate.setDate(minDate.getDate() + Number(minAdvance || 0));
 
@@ -304,6 +268,9 @@ function paintMonth(data, degraded){
   const notice = degraded ? '<div class="cal-degraded">' + t.degraded + ' <a href="#" onclick="renderMonth();return false;">' + t.retry + '</a></div>' : '';
   document.getElementById('calBody').innerHTML = notice + '<div class="grid">' + html + '</div>';
   document.getElementById('dateHint').textContent = t.minDays.replace('{n}', minAdvance);
+
+  // Warm the cache for the neighbouring months so navigation feels instant.
+  prefetchNeighbors();
 }
 
 function prefetchNeighbors(){

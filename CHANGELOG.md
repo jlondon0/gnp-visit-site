@@ -3,46 +3,48 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
-## 2026-09-13 - SWL-KFMU: calendar takes too long to load
-- Symptom: reported from https://visit.guayacanpreserve.com/calendar.html while
-  reviewing availability, with an error message on screen. The page's only
-  error text is the degraded notice ("No pudimos cargar la disponibilidad en
-  vivo..."), shown when the availability call fails; the screenshot itself was
-  not readable from the cloud lane, so that reading is inferred from the page.
-- Cause: every visit fetched each month straight from the Apps Script Web App,
-  which answers a calendar month in seconds and, under load, with an HTML error
-  page rather than JSON. The page had no timeout and no memory of a previous
-  answer, so every visitor paid the full wait and any bad answer became the
-  degraded notice.
-- Fix: this Worker now has code (`src/worker.js`, build
-  `calendar-cache v1.0.0 · 2026-09-13`) serving `/api/calendar?month=YYYY-MM`
-  from the Cache API in front of Apps Script. A month is served as-is for five
-  minutes, then served stale for up to a week while one background refresh per
-  colo asks Apps Script again; an error page or a not-ok payload never
-  displaces a cached answer. `calendar.html` (`v2.28.2a`) reads through that
-  path with a 20 second timeout, keeps the last good month in localStorage for
-  a day and paints it at once while the fresh copy loads, and still shows the
-  saved grid with the degraded notice if the network fails. Month navigation
-  during a load no longer paints out of order.
-- Not changed: `index.html` still asks Apps Script directly for `config` and
-  per-date `availability`; the chat widget posts to it. Only the calendar page
-  was reported.
-- Tests: `tests/worker.test.mjs` (miss caches, second visitor does not wait,
-  stale served at once with one refresh per gap, error page never displaces a
-  cached answer, 502 caches nothing, validation, build marker in this file) and
-  `tests/calendar-page.test.mjs` (the shipped page script against a stub DOM:
-  requests go to `/api/calendar`, a saved month paints before the network
-  answers, a failed network with a saved month keeps the grid). Runner adds the
-  wrangler and page contracts. Mutation-tested: without `cache.put` the second
-  visitor waits; without the background refresh the stale copy never updates;
-  the previous `calendar.html` fails all three page contracts.
-- Verification on the running site is `.github/workflows/live-check.yml`
-  (workflow_dispatch): a GitHub runner measures Apps Script directly, waits for
-  the deployed Worker build to match the checkout, and requires a cached month
-  under 1.5 s. The cloud lane reaches neither Cloudflare nor Google, so this
-  job is its eyes; see DEPLOY.md.
-- `.swl-preflight` added so `scripts/preflight.sh` compares the deployed
-  calendar build marker against the repo.
+## 2026-09-13 - SWL-KFMU: calendar takes too long to load, then shows an error
+- Symptom: on https://visit.guayacanpreserve.com/calendar.html the grid sat on
+  "Cargando disponibilidad..." for a long time and then showed the degraded
+  notice ("No pudimos cargar la disponibilidad en vivo"). Reported while
+  reviewing availability; the reporter suggested mirroring the calendar
+  somewhere faster than Google Sheets.
+- Cause: the page fetched every month straight from the Apps Script web app
+  (`?action=calendar&month=`), which reads the bookings sheet on each call and
+  answers in seconds on a cold start, through a redirect to
+  script.googleusercontent.com. Three such calls left the page at once (the
+  month shown plus both neighbours). Nothing cached the answer between
+  visitors, and the page's fetch had no timeout, so a slow backend was
+  indistinguishable from a dead one until the browser gave up.
+- Fix: this Worker now runs a script (`src/worker.js`) in front of the static
+  pages and serves `GET /api/calendar?month=YYYY-MM` from an edge copy of the
+  backend's answer. A copy under five minutes old is served as is; an older
+  one is served at once and refreshed behind the visitor; if the backend is
+  down the last good copy is served for up to a day; only a response the
+  backend marked `ok:true` is ever stored, so an error cannot be pinned in the
+  cache; an invalid month is refused, never forwarded. `calendar.html` reads
+  from that endpoint (same origin, no CORS, no redirect) and gives up on a
+  month after 15 s, showing the retry notice instead of hanging. The first
+  visitor behind each Cloudflare data centre after a deploy still pays one
+  backend round trip; everyone after them gets milliseconds. KV would make the
+  copy global; see DEPLOY.md for that step.
+- Calendar build marker bumped to `v2.28.2a` (issue fix, alpha suffix) and
+  `.swl-preflight` added so `scripts/preflight.sh` compares the deployed
+  calendar against the repo instead of reporting NOT CHECKED.
+- Tests: `tests/calendar-proxy.test.mjs` (plain node, Cache API and fetch
+  stubbed) asserts the miss, fresh-hit, stale-hit, backend-down, error-never-
+  cached, bad-month and routing contracts; `scripts/run-tests.sh` runs it and
+  also asserts that the page reads from `/api/calendar`, no longer names
+  Apps Script, carries a fetch timeout, and that `wrangler.jsonc` deploys the
+  script with the `ASSETS` binding. Where a wrangler binary is present
+  (`WRANGLER_BIN` or `node_modules/.bin`), `wrangler deploy --dry-run` must
+  accept the config; its absence is printed as NOT CHECKED. Mutation-tested:
+  pointing the page back at Apps Script, disabling the cache read, caching an
+  `ok:false` answer and removing the timeout each turn the suite red.
+- Screenshot attached to the request could not be opened from the cloud lane
+  (toolbox host outside the egress allowlist); the diagnosis is from the code
+  path, which has exactly one loading state and one error notice.
+- README.md added (gap G5).
 
 ## 2026-09-13 - SWL-FSBY: images missing from guayacanpreserve.com; this site now serves them
 - Symptom: every image gone from https://guayacanpreserve.com/ while browsing.

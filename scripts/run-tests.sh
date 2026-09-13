@@ -54,32 +54,36 @@ dim(){ python3 -c "import struct,sys;d=open(sys.argv[1],'rb').read(24);print(*st
 grep -q '"directory": *"./public/"' wrangler.jsonc && ok || bad "wrangler.jsonc assets directory is not ./public/"
 git ls-files | grep -qE '(^|/)@eaDir/|\.DS_Store$' && bad "Synology metadata is tracked in git" || ok
 
-# 6. SWL-KFMU: availability is read through the Worker's edge cache, never
-#    straight from Apps Script by the calendar page. The Worker is the deploy's
-#    entry point and the assets binding it falls through to must be declared.
-grep -q '"main": *"src/worker.js"' wrangler.jsonc && ok || bad "wrangler.jsonc does not run src/worker.js"
-grep -q '"binding": *"ASSETS"' wrangler.jsonc && ok || bad "wrangler.jsonc declares no ASSETS binding for the Worker to fall through to"
-grep -q "const CAL_API = '/api/calendar'" public/calendar.html && ok || bad "calendar.html does not read availability from /api/calendar"
-grep -q 'action=calendar' public/calendar.html && bad "calendar.html still requests action=calendar from Apps Script directly" || ok
-
-# 7. Behavioural contracts (Worker cache semantics, calendar page against a stub
-#    DOM) run under node's own test runner. No node is a failure, not a skip:
-#    a suite that cannot run has not passed.
+# 6. Availability is served from this Worker's edge copy (SWL-KFMU), never
+#    fetched by the calendar page straight from Apps Script, and the Worker
+#    behind it keeps its contract: fresh hits skip the backend, stale hits are
+#    served while refreshing, errors are never cached, bad months are refused.
+grep -qE "const API_BASE = '/api/calendar'" public/calendar.html && ok || bad "calendar.html does not read availability from /api/calendar"
+grep -qE "fetch\(API_BASE \+ '\?month=" public/calendar.html && ok || bad "calendar.html does not request /api/calendar?month="
+grep -qE "script\.google\.com" public/calendar.html && bad "calendar.html still names script.google.com; the page must not call Apps Script directly" || ok
+grep -qE "signal: ctrl\.signal" public/calendar.html && ok || bad "calendar.html has no fetch timeout; a slow backend leaves the page on Cargando forever"
+grep -q '"main": *"src/worker.js"' wrangler.jsonc && ok || bad "wrangler.jsonc does not deploy src/worker.js"
+grep -q '"binding": *"ASSETS"' wrangler.jsonc && ok || bad "wrangler.jsonc has no ASSETS binding; the Worker cannot serve the pages"
+grep -qE "^const CAL_BUILD = '[^']+'" public/calendar.html && ok || bad "calendar.html has no CAL_BUILD marker for the deployed-vs-repo check"
 if command -v node >/dev/null 2>&1; then
-  NODE_OUT=$(node --test tests/*.test.mjs 2>&1)
-  NODE_STATUS=$?
-  NP=$(printf '%s
-' "$NODE_OUT" | sed -n 's/^# pass \([0-9]*\)$/\1/p' | tail -1)
-  NF=$(printf '%s
-' "$NODE_OUT" | sed -n 's/^# fail \([0-9]*\)$/\1/p' | tail -1)
-  PASS=$((PASS + ${NP:-0}))
-  if [ "$NODE_STATUS" -ne 0 ] || [ "${NF:-1}" -ne 0 ]; then
-    FAIL=$((FAIL + ${NF:-1}))
-    printf '%s
-' "$NODE_OUT" | grep -E '^not ok|error:|^\s+actual|^\s+expected' | head -20 | sed 's/^/  FAIL: /'
+  if node tests/calendar-proxy.test.mjs 2>/dev/null | grep -q 'calendar-proxy: all'; then ok; else
+    bad "tests/calendar-proxy.test.mjs is red:"; node tests/calendar-proxy.test.mjs 2>&1 | grep -E 'FAIL|^ {7}' | head -12 | sed 's/^/    /'
   fi
 else
-  bad "node not found: tests/*.test.mjs did not run"
+  bad "node is not on PATH; the Worker contract cannot be checked here"
+fi
+
+# 7. The deploy config must be one wrangler accepts. A dry run needs no
+#    Cloudflare access. Only run where a wrangler binary is present (the
+#    build host has its own); its absence is reported, never read as a pass.
+WRANGLER=""
+for c in ./node_modules/.bin/wrangler "${WRANGLER_BIN:-}"; do [ -n "$c" ] && [ -x "$c" ] && WRANGLER="$c" && break; done
+if [ -n "$WRANGLER" ]; then
+  OUTDIR=$(mktemp -d)
+  if "$WRANGLER" deploy --dry-run --outdir "$OUTDIR" >/dev/null 2>&1 && [ -s "$OUTDIR/worker.js" ]; then ok; else bad "wrangler deploy --dry-run rejected the config or produced no bundle"; fi
+  rm -rf "$OUTDIR"
+else
+  echo "  NOT CHECKED: no wrangler binary (set WRANGLER_BIN or npm install wrangler) - config dry run skipped"
 fi
 
 echo "PASSED: $PASS, FAILED: $FAIL"

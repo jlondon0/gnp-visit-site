@@ -2,32 +2,30 @@
 
 Booking site for Guayacan Natural Preserve: https://visit.guayacanpreserve.com/
 
-A Cloudflare Worker (`src/worker.js`) serving the static pages in `public/`
-plus one endpoint, `/api/calendar?month=YYYY-MM`, an edge cache in front of
-the Apps Script backend's calendar month. Everything else the pages need
-(config, per-date availability, bookings, payment, chat) goes straight to the
-Apps Script Web App whose URL sits at the top of each page's script.
+Static pages in `public/` (booking form, availability calendar, review, pay,
+manage, admin) served as Cloudflare Workers Static Assets, plus one Worker
+script, `src/worker.js`, that serves `/api/calendar` from an edge copy of the
+Apps Script backend's availability. The backend itself (pricing, bookings,
+payments) is the Apps Script web app in `jlondon0/guayacan-reservations-updated`.
 
-The backend is `jlondon0/guayacan-reservations-updated` (Apps Script, deployed
-by hand). Each page carries its own build marker (`<!-- GNP-BUILD: ... -->` and
-a matching constant logged at load); the platform version is the backend's.
-
-## Running
-
-There is no build. `wrangler dev` from a machine with wrangler logged in
-serves the Worker and the assets locally; pushing to `main` deploys (see
-DEPLOY.md).
-
-## Tests
+## Run the checks
 
 ```bash
 ./tests/run.sh
+WRANGLER_BIN=/path/to/wrangler ./tests/run.sh   # also dry-runs the deploy config
+./scripts/preflight.sh                           # lane, remote, deployed version, baseline
 ```
 
-Exits non-zero on any failure and prints one verdict line. Static contracts on
-the shipped artifact live in `scripts/run-tests.sh`; behavioural contracts in
-`tests/*.test.mjs` run under `node --test` (Node 18 or later, no dependencies).
-Baseline at the time of writing: 62 passed, 0 failed.
+Exits non-zero on any failure; prints `PASSED: n, FAILED: m` and one verdict
+line. Baseline on 2026-09-13: 56 passed, 0 failed (57 with a wrangler binary).
 
-`.github/workflows/live-check.yml` measures the running site from a GitHub
-runner; see DEPLOY.md for when and how to run it.
+## Deploy
+
+Push to `main`. Workers Builds runs `wrangler deploy`. See DEPLOY.md.
+
+## Versions
+
+Pages carry their own build marker (`GNP-BUILD` comment and a `*_BUILD`
+constant): index `v2.32.0`, calendar `v2.28.2a`. The index page compares its
+marker against the backend's reported version in the console. Number bump for
+a change request, alpha suffix for an issue fix.
