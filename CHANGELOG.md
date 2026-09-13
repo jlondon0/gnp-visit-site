@@ -45,6 +45,11 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   step read no marker from the live `calendar.html` because it fetched the
   `.html` path without following the redirect Static Assets issues to the
   extensionless path; the step now follows redirects and prints the status.
+- Third run on main (34776474621) reproduced the report against the backend
+  itself: Apps Script asked directly took 33.1 s on the first attempt and
+  timed out at 60 s with no bytes on the second. That is what every visitor
+  paid before the edge copy. The baseline step is a measurement, so it no
+  longer fails the job; only the checks against the site decide.
 
 ## 2026-09-13 - SWL-KFMU: calendar takes too long to load, then shows an error
 - Symptom: on https://visit.guayacanpreserve.com/calendar.html the grid sat on
