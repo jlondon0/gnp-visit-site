@@ -50,6 +50,13 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   timed out at 60 s with no bytes on the second. That is what every visitor
   paid before the edge copy. The baseline step is a measurement, so it no
   longer fails the job; only the checks against the site decide.
+- Verified on the running site, run 34776650918 on main, green: in the same
+  minute Apps Script asked directly took 1.75 s, 31.35 s and 35.01 s;
+  `/api/calendar` answered the current month `miss` in 2.20 s (first visitor
+  at that data centre after the deploy) and `hit` in 0.052 s; the deployed
+  Worker reported `calendar-cache v1.0.1`; `/calendar.html` redirected to
+  `/calendar` with HTTP 200 carrying the `v2.28.2b` marker and reading from
+  `/api/calendar`. SWL-KFMU closed on that run.
 
 ## 2026-09-13 - SWL-KFMU: calendar takes too long to load, then shows an error
 - Symptom: on https://visit.guayacanpreserve.com/calendar.html the grid sat on
