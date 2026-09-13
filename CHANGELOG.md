@@ -3,6 +3,47 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-09-13 - SWL-KFMU: calendar takes too long to load
+- Symptom: reported from https://visit.guayacanpreserve.com/calendar.html while
+  reviewing availability, with an error message on screen. The page's only
+  error text is the degraded notice ("No pudimos cargar la disponibilidad en
+  vivo..."), shown when the availability call fails; the screenshot itself was
+  not readable from the cloud lane, so that reading is inferred from the page.
+- Cause: every visit fetched each month straight from the Apps Script Web App,
+  which answers a calendar month in seconds and, under load, with an HTML error
+  page rather than JSON. The page had no timeout and no memory of a previous
+  answer, so every visitor paid the full wait and any bad answer became the
+  degraded notice.
+- Fix: this Worker now has code (`src/worker.js`, build
+  `calendar-cache v1.0.0 · 2026-09-13`) serving `/api/calendar?month=YYYY-MM`
+  from the Cache API in front of Apps Script. A month is served as-is for five
+  minutes, then served stale for up to a week while one background refresh per
+  colo asks Apps Script again; an error page or a not-ok payload never
+  displaces a cached answer. `calendar.html` (`v2.28.2a`) reads through that
+  path with a 20 second timeout, keeps the last good month in localStorage for
+  a day and paints it at once while the fresh copy loads, and still shows the
+  saved grid with the degraded notice if the network fails. Month navigation
+  during a load no longer paints out of order.
+- Not changed: `index.html` still asks Apps Script directly for `config` and
+  per-date `availability`; the chat widget posts to it. Only the calendar page
+  was reported.
+- Tests: `tests/worker.test.mjs` (miss caches, second visitor does not wait,
+  stale served at once with one refresh per gap, error page never displaces a
+  cached answer, 502 caches nothing, validation, build marker in this file) and
+  `tests/calendar-page.test.mjs` (the shipped page script against a stub DOM:
+  requests go to `/api/calendar`, a saved month paints before the network
+  answers, a failed network with a saved month keeps the grid). Runner adds the
+  wrangler and page contracts. Mutation-tested: without `cache.put` the second
+  visitor waits; without the background refresh the stale copy never updates;
+  the previous `calendar.html` fails all three page contracts.
+- Verification on the running site is `.github/workflows/live-check.yml`
+  (workflow_dispatch): a GitHub runner measures Apps Script directly, waits for
+  the deployed Worker build to match the checkout, and requires a cached month
+  under 1.5 s. The cloud lane reaches neither Cloudflare nor Google, so this
+  job is its eyes; see DEPLOY.md.
+- `.swl-preflight` added so `scripts/preflight.sh` compares the deployed
+  calendar build marker against the repo.
+
 ## 2026-09-13 - SWL-FSBY: images missing from guayacanpreserve.com; this site now serves them
 - Symptom: every image gone from https://guayacanpreserve.com/ while browsing.
   The chat bird on this booking site went blank at the same time.

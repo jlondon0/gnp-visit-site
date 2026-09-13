@@ -1,0 +1,79 @@
+# SWL-KFMU live check. The cloud lane cannot reach Cloudflare or Google, so
+# this job is how a session measures the running site and the Apps Script
+# backend: it runs on a GitHub-hosted runner, which reaches both.
+#
+# Run it by hand (workflow_dispatch) after a push to main has built, or from a
+# session through the Actions API. It fails when the deployed Worker is not
+# the one in the checkout, when /api/calendar does not answer a well-formed
+# month, or when a cached month takes more than CACHED_LIMIT_S seconds.
+name: live-check
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: Site to check
+        default: https://visit.guayacanpreserve.com
+        required: true
+      wait_minutes:
+        description: Minutes to wait for the checkout's Worker build to be live
+        default: "6"
+        required: true
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Baseline, Apps Script asked directly
+        run: |
+          UP=$(sed -n "s/^export const UPSTREAM = '\([^']*\)';/\1/p" src/worker.js)
+          M=$(date -u +%Y-%m)
+          echo "upstream: $UP"
+          for i in 1 2 3; do
+            curl -sS -L --max-time 60 -o /tmp/up.$i -w "attempt $i: HTTP %{http_code} in %{time_total}s\n" "$UP?action=calendar&month=$M" || echo "attempt $i: curl failed"
+            head -c 200 /tmp/up.$i; echo
+          done
+
+      - name: Wait for the checkout's Worker build to be live
+        env:
+          BASE: ${{ inputs.base_url }}
+          WAIT: ${{ inputs.wait_minutes }}
+        run: |
+          WANT=$(sed -n "s/^export const WORKER_BUILD = '\([^']*\)';/\1/p" src/worker.js)
+          echo "repo worker build: $WANT"
+          M=$(date -u +%Y-%m)
+          for i in $(seq 1 $((WAIT * 6))); do
+            LIVE=$(curl -sS --max-time 40 -D - -o /dev/null "$BASE/api/calendar?month=$M" | tr -d '\r' | sed -n 's/^x-gnp-worker: //Ip')
+            if [ "$LIVE" = "$WANT" ]; then echo "live worker build: $LIVE"; exit 0; fi
+            echo "live worker build: '${LIVE:-none}' (try $i)"; sleep 10
+          done
+          echo "deployed Worker is not the checkout's after $WAIT minutes"; exit 1
+
+      - name: Month answers well-formed, and cached within the limit
+        env:
+          BASE: ${{ inputs.base_url }}
+          CACHED_LIMIT_S: "1.5"
+        run: |
+          M=$(date -u +%Y-%m)
+          first=$(curl -sS --max-time 60 -D /tmp/h1 -o /tmp/b1 -w '%{time_total}' "$BASE/api/calendar?month=$M")
+          echo "first: $(tr -d '\r' </tmp/h1 | grep -i '^x-gnp-cache') in ${first}s"
+          grep -q '"ok":true' /tmp/b1 || { echo "first answer not ok:"; head -c 300 /tmp/b1; exit 1; }
+          grep -q '"days"' /tmp/b1 || { echo "first answer has no days"; exit 1; }
+          second=$(curl -sS --max-time 60 -D /tmp/h2 -o /tmp/b2 -w '%{time_total}' "$BASE/api/calendar?month=$M")
+          state=$(tr -d '\r' </tmp/h2 | sed -n 's/^x-gnp-cache: //Ip')
+          echo "second: $state in ${second}s"
+          [ "$state" = "HIT" ] || [ "$state" = "STALE" ] || { echo "second request was not served from cache"; exit 1; }
+          awk -v s="$second" -v l="$CACHED_LIMIT_S" 'BEGIN{ exit (s+0 <= l+0) ? 0 : 1 }' || { echo "cached month took ${second}s, limit ${CACHED_LIMIT_S}s"; exit 1; }
+          cmp -s /tmp/b1 /tmp/b2 || echo "note: bodies differ between first and second (a refresh landed between them)"
+
+      - name: calendar.html live is the checkout's
+        env:
+          BASE: ${{ inputs.base_url }}
+        run: |
+          WANT=$(sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p' public/calendar.html)
+          LIVE=$(curl -sS --max-time 40 "$BASE/calendar.html" | sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p')
+          echo "repo: $WANT / live: $LIVE"
+          [ "$WANT" = "$LIVE" ] || exit 1
+          curl -sS --max-time 40 "$BASE/calendar.html" | grep -q "const CAL_API = '/api/calendar'" || { echo "live calendar.html does not use /api/calendar"; exit 1; }

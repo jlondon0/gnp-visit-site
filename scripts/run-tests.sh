@@ -54,6 +54,34 @@ dim(){ python3 -c "import struct,sys;d=open(sys.argv[1],'rb').read(24);print(*st
 grep -q '"directory": *"./public/"' wrangler.jsonc && ok || bad "wrangler.jsonc assets directory is not ./public/"
 git ls-files | grep -qE '(^|/)@eaDir/|\.DS_Store$' && bad "Synology metadata is tracked in git" || ok
 
+# 6. SWL-KFMU: availability is read through the Worker's edge cache, never
+#    straight from Apps Script by the calendar page. The Worker is the deploy's
+#    entry point and the assets binding it falls through to must be declared.
+grep -q '"main": *"src/worker.js"' wrangler.jsonc && ok || bad "wrangler.jsonc does not run src/worker.js"
+grep -q '"binding": *"ASSETS"' wrangler.jsonc && ok || bad "wrangler.jsonc declares no ASSETS binding for the Worker to fall through to"
+grep -q "const CAL_API = '/api/calendar'" public/calendar.html && ok || bad "calendar.html does not read availability from /api/calendar"
+grep -q 'action=calendar' public/calendar.html && bad "calendar.html still requests action=calendar from Apps Script directly" || ok
+
+# 7. Behavioural contracts (Worker cache semantics, calendar page against a stub
+#    DOM) run under node's own test runner. No node is a failure, not a skip:
+#    a suite that cannot run has not passed.
+if command -v node >/dev/null 2>&1; then
+  NODE_OUT=$(node --test tests/*.test.mjs 2>&1)
+  NODE_STATUS=$?
+  NP=$(printf '%s
+' "$NODE_OUT" | sed -n 's/^# pass \([0-9]*\)$/\1/p' | tail -1)
+  NF=$(printf '%s
+' "$NODE_OUT" | sed -n 's/^# fail \([0-9]*\)$/\1/p' | tail -1)
+  PASS=$((PASS + ${NP:-0}))
+  if [ "$NODE_STATUS" -ne 0 ] || [ "${NF:-1}" -ne 0 ]; then
+    FAIL=$((FAIL + ${NF:-1}))
+    printf '%s
+' "$NODE_OUT" | grep -E '^not ok|error:|^\s+actual|^\s+expected' | head -20 | sed 's/^/  FAIL: /'
+  fi
+else
+  bad "node not found: tests/*.test.mjs did not run"
+fi
+
 echo "PASSED: $PASS, FAILED: $FAIL"
 [ "$FAIL" -eq 0 ] && { echo "BASELINE OK"; exit 0; }
 echo "SUITE RED"; exit 1

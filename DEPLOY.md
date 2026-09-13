@@ -13,19 +13,61 @@ and the baseline you are starting from. A green build means an upload succeeded,
 not that the running artifact is current — confirm the version the deployed thing
 reports, not the one the build log claims.
 
+## What deploys
+
+Workers Builds runs `wrangler deploy` on `wrangler.jsonc`: `src/worker.js` is
+the Worker and `./public/` its static assets (binding `ASSETS`). A request for
+a file in `public/` is answered by the asset; anything else reaches the Worker,
+which serves `/api/calendar` and falls through to the assets' own 404 for the
+rest. Nothing is created by hand: the calendar cache uses the Cache API, which
+needs no namespace or binding.
+
+## Verifying on the running site from a cloud session
+
+The cloud lane reaches GitHub and nothing else. `live-check.yml` runs on a
+GitHub-hosted runner, which reaches both Cloudflare and Google, and is the way
+a session sees the site: trigger it (Actions, live-check, Run workflow, or the
+Actions API with `ref` set to the branch holding the checkout) after the push
+to `main` has built. It fails until the deployed `x-gnp-worker` header equals
+`WORKER_BUILD` in `src/worker.js`, then requires a well-formed month and a
+cached answer under 1.5 s, and checks the live `calendar.html` build marker.
+Its first step times Apps Script directly, which is the baseline the cache is
+measured against.
+
+By hand from any machine that reaches the site:
+
+```bash
+M=$(date -u +%Y-%m)
+curl -sS -D - -o /dev/null -w 'total %{time_total}s\n' "https://visit.guayacanpreserve.com/api/calendar?month=$M" | grep -iE '^(HTTP|x-gnp)|total'
+curl -sS -D - -o /dev/null -w 'total %{time_total}s\n' "https://visit.guayacanpreserve.com/api/calendar?month=$M" | grep -iE '^(HTTP|x-gnp)|total'
+```
+
+The first line may say `x-gnp-cache: MISS` and take seconds; the second says
+`HIT` or `STALE` and takes milliseconds. `x-gnp-age` is the seconds since Apps
+Script last answered for that month; `x-gnp-upstream-ms` is how long it took.
+
+## Calendar cache: tuning and the KV upgrade path
+
+`src/worker.js` holds the four knobs: `FRESH_SECONDS` (300, served without
+asking upstream), `STALE_SECONDS` (a week, served while refreshing),
+`REVALIDATE_GAP_SECONDS` (30, one background refresh per colo per gap) and
+`UPSTREAM_TIMEOUT_MS` (25 s). The Cache API is per Cloudflare colo, so the
+first visitor at each colo after a week, or after an eviction, waits for Apps
+Script once. If that ever matters, the upgrade is a KV namespace shared by all
+colos, warmed by a cron trigger: create the namespace in the Cloudflare
+dashboard (Workers and Pages, KV), bind it as `CAL_KV` in `wrangler.jsonc`, and
+have `calendar()` read KV before the Cache API. A binding to a namespace that
+does not exist fails the deploy, so the namespace comes first and the config
+second. UNVERIFIED: not built.
+
 ## Making the deployed-vs-repo check real
 
 `preflight.sh` cannot compare this repo to production until it is told how.
-Create `.swl-preflight`:
-
-```sh
-URL=https://example.com
-VERSION_FILE=src/index.html
-VERSION_GREP='const APP_VERSION = "\([^"]*\)"'
-```
-
-Until then it reports that check as NOT CHECKED, which is the honest answer and
-not the same as passing.
+`.swl-preflight` (committed) points it at the `GNP-BUILD` marker of
+`public/calendar.html` on the live site. Each page carries its own marker, so
+the check covers the page most recently changed; move it when another page is.
+Without the file it reports that check as NOT CHECKED, which is the honest
+answer and not the same as passing.
 
 ## Rolling back
 
