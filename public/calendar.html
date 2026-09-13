@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: calendar v2.28.2a · 2026-09-13 -->
+<!-- GNP-BUILD: calendar v2.28.2b · 2026-09-13 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -131,10 +131,16 @@ a{color:inherit;}
 // (src/worker.js), not from Apps Script directly: the backend takes
 // seconds on a cold start and the page used to hang on it (SWL-KFMU).
 const API_BASE = '/api/calendar';
-const CAL_BUILD = 'v2.28.2a · 2026-09-13';
+const CAL_BUILD = 'v2.28.2b · 2026-09-13';
 // Give up on a month after this long and show the degraded notice with a
 // retry link, rather than leaving "Cargando..." on screen indefinitely.
 const FETCH_TIMEOUT_MS = 15000;
+// The last good answer for each month is kept in localStorage for a day and
+// painted at once on the next visit while the fresh copy loads; if the network
+// fails it stays on screen under the degraded notice instead of an empty grid.
+const LOCAL_TTL_MS = 24 * 60 * 60 * 1000;
+const LOCAL_PREFIX = 'gnp.cal.';
+let renderSeq = 0;
 // Friendly session labels for the remaining-spots tooltip; falls back to the raw key.
 const CONFIG_LABELS = {
   AMANECER: { ES: 'Amanecer', EN: 'Dawn' },
@@ -199,8 +205,23 @@ function changeMonth(delta){
   renderMonth();
 }
 
+function monthKey(year, month){ return year + '-' + String(month+1).padStart(2,'0'); }
+
+function localGet(key){
+  try {
+    const raw = localStorage.getItem(LOCAL_PREFIX + key);
+    if (!raw) return null;
+    const o = JSON.parse(raw);
+    if (!o || !o.data || !o.data.days || (Date.now() - o.at) > LOCAL_TTL_MS) return null;
+    return o.data;
+  } catch (e) { return null; }
+}
+function localPut(key, data){
+  try { localStorage.setItem(LOCAL_PREFIX + key, JSON.stringify({ at: Date.now(), data: data })); } catch (e) {}
+}
+
 async function fetchMonth(year, month){
-  const key = year + '-' + String(month+1).padStart(2,'0');
+  const key = monthKey(year, month);
   if (cache[key]) return cache[key];
   const ctrl = (typeof AbortController !== 'undefined') ? new AbortController() : null;
   const timer = ctrl ? setTimeout(function(){ ctrl.abort(); }, FETCH_TIMEOUT_MS) : null;
@@ -209,6 +230,7 @@ async function fetchMonth(year, month){
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'calendar error');
     cache[key] = json.data;
+    localPut(key, json.data);
     return json.data;
   } finally {
     if (timer) clearTimeout(timer);
@@ -219,21 +241,34 @@ function dateStr(y,m,d){ return y + '-' + String(m+1).padStart(2,'0') + '-' + St
 
 async function renderMonth(){
   const t = I18N[LANG];
+  const seq = ++renderSeq;
   document.getElementById('calTitle').textContent = t.months[viewMonth] + ' ' + viewYear;
-  document.getElementById('calBody').innerHTML = '<div class="loading">'+t.loading+'</div>';
-
-  const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const isCurrentMonth = (viewYear === today.getFullYear() && viewMonth === today.getMonth());
   document.getElementById('prevBtn').disabled = isCurrentMonth;
 
-  let data, degraded = false;
-  try { data = await fetchMonth(viewYear, viewMonth); }
-  catch(err){
-    console.warn('calendar availability failed; degraded mode:', (err && err.message) || err);
-    degraded = true;
-    data = { days: {}, minDaysAdvance: 7 };
+  const key = monthKey(viewYear, viewMonth);
+  let data = cache[key] || null, degraded = false;
+  if (!data) {
+    const saved = localGet(key);
+    if (saved) paintMonth(saved, false);
+    else document.getElementById('calBody').innerHTML = '<div class="loading">'+t.loading+'</div>';
+    try { data = await fetchMonth(viewYear, viewMonth); }
+    catch(err){
+      console.warn('calendar availability failed; degraded mode:', (err && err.message) || err);
+      degraded = true;
+      data = saved || { days: {}, minDaysAdvance: 7 };
+    }
   }
+  if (seq !== renderSeq) return; // the visitor moved to another month while this one loaded
+  paintMonth(data, degraded);
 
+  // Warm the cache for the neighbouring months so navigation feels instant.
+  prefetchNeighbors();
+}
+
+function paintMonth(data, degraded){
+  const t = I18N[LANG];
+  const firstOfMonth = new Date(viewYear, viewMonth, 1);
   const minAdvance = data.minDaysAdvance != null ? data.minDaysAdvance : 7;
   const minDate = new Date(today); minDate.setDate(minDate.getDate() + Number(minAdvance || 0));
 
@@ -268,9 +303,6 @@ async function renderMonth(){
   const notice = degraded ? '<div class="cal-degraded">' + t.degraded + ' <a href="#" onclick="renderMonth();return false;">' + t.retry + '</a></div>' : '';
   document.getElementById('calBody').innerHTML = notice + '<div class="grid">' + html + '</div>';
   document.getElementById('dateHint').textContent = t.minDays.replace('{n}', minAdvance);
-
-  // Warm the cache for the neighbouring months so navigation feels instant.
-  prefetchNeighbors();
 }
 
 function prefetchNeighbors(){

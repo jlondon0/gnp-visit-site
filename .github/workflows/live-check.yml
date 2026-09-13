@@ -64,7 +64,7 @@ jobs:
           second=$(curl -sS --max-time 60 -D /tmp/h2 -o /tmp/b2 -w '%{time_total}' "$BASE/api/calendar?month=$M")
           state=$(tr -d '\r' </tmp/h2 | sed -n 's/^x-gnp-cache: //Ip')
           echo "second: $state in ${second}s"
-          [ "$state" = "HIT" ] || [ "$state" = "STALE" ] || { echo "second request was not served from cache"; exit 1; }
+          [ "$state" = "hit" ] || [ "$state" = "stale" ] || { echo "second request was not served from cache"; exit 1; }
           awk -v s="$second" -v l="$CACHED_LIMIT_S" 'BEGIN{ exit (s+0 <= l+0) ? 0 : 1 }' || { echo "cached month took ${second}s, limit ${CACHED_LIMIT_S}s"; exit 1; }
           cmp -s /tmp/b1 /tmp/b2 || echo "note: bodies differ between first and second (a refresh landed between them)"
 
@@ -76,4 +76,4 @@ jobs:
           LIVE=$(curl -sS --max-time 40 "$BASE/calendar.html" | sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p')
           echo "repo: $WANT / live: $LIVE"
           [ "$WANT" = "$LIVE" ] || exit 1
-          curl -sS --max-time 40 "$BASE/calendar.html" | grep -q "const CAL_API = '/api/calendar'" || { echo "live calendar.html does not use /api/calendar"; exit 1; }
+          curl -sS --max-time 40 "$BASE/calendar.html" | grep -q "const API_BASE = '/api/calendar'" || { echo "live calendar.html does not use /api/calendar"; exit 1; }

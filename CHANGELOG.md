@@ -3,6 +3,36 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-09-13 - SWL-KFMU follow-up: verify the edge copy on the running site, and harden it
+- Two sessions took the request at once; the entry below shipped first as #5
+  and is the fix. This entry is what the second session added on top of it.
+- Verification: the cloud lane reaches neither Cloudflare nor Google, so the
+  first fix was shipped without being observed on the site. Added
+  `.github/workflows/live-check.yml` (workflow_dispatch): a GitHub runner times
+  Apps Script directly, waits for the deployed Worker to report the checkout's
+  build, requires a well-formed month and a cached answer under 1.5 s, and
+  checks the live `calendar.html` marker. The Worker now carries one version
+  string, `WORKER_BUILD` (`calendar-cache v1.0.1 · 2026-09-13`), reported as
+  `x-gnp-worker` on every `/api/calendar` answer, which is what the job and
+  `scripts/preflight.sh` compare against. The run's numbers are recorded in
+  the request closure.
+- Hardening: every stale hit started its own background refresh, so a busy
+  minute right after a copy aged sent one Apps Script call per visitor, which
+  is how Apps Script gets to "Service invoked too many times". The first
+  stale hit now re-stores the copy stamped as refreshing and later hits within
+  `REFRESH_GAP_MS` (30 s) ride that one refresh.
+- Page (`calendar.html` `v2.28.2b`): the last good month is kept in
+  localStorage for a day and painted at once on the next visit while the fresh
+  copy loads; if the network fails, the saved grid stays on screen under the
+  degraded notice instead of an empty one. Month navigation during a load no
+  longer paints out of order.
+- Tests: the burst and build-marker contracts in `tests/calendar-proxy.test.mjs`;
+  `tests/calendar-page.test.mjs` runs the shipped page script against a stub
+  DOM (requests go to `/api/calendar`, a saved month paints before the network
+  answers, a failed network with a saved month keeps the grid), wired into the
+  runner. Mutation-tested: removing the refresh gap, removing the build header
+  and reverting the page to `v2.28.2a` each turn the suite red.
+
 ## 2026-09-13 - SWL-KFMU: calendar takes too long to load, then shows an error
 - Symptom: on https://visit.guayacanpreserve.com/calendar.html the grid sat on
   "Cargando disponibilidad..." for a long time and then showed the degraded
