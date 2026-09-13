@@ -74,8 +74,11 @@ jobs:
         env:
           BASE: ${{ inputs.base_url }}
         run: |
+          # Static Assets answers /calendar.html with a redirect to /calendar by
+          # default (auto-trailing-slash); follow it and say where we landed.
           WANT=$(sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p' public/calendar.html)
-          LIVE=$(curl -sS --max-time 40 "$BASE/calendar.html" | sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p')
-          echo "repo: $WANT / live: $LIVE"
-          [ "$WANT" = "$LIVE" ] || exit 1
-          curl -sS --max-time 40 "$BASE/calendar.html" | grep -q "const API_BASE = '/api/calendar'" || { echo "live calendar.html does not use /api/calendar"; exit 1; }
+          curl -sS -L --max-time 40 -o /tmp/cal.html -w 'HTTP %{http_code} from %{url_effective}\n' "$BASE/calendar.html"
+          LIVE=$(sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p' /tmp/cal.html)
+          echo "repo: $WANT / live: ${LIVE:-none} ($(wc -c </tmp/cal.html) bytes)"
+          [ "$WANT" = "$LIVE" ] || { head -c 300 /tmp/cal.html; echo; exit 1; }
+          grep -q "const API_BASE = '/api/calendar'" /tmp/cal.html || { echo "live calendar.html does not use /api/calendar"; exit 1; }
