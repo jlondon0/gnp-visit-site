@@ -28,7 +28,8 @@ jobs:
 
       - name: Baseline, Apps Script asked directly
         run: |
-          UP=$(sed -n "s/^export const UPSTREAM = '\([^']*\)';/\1/p" src/worker.js)
+          UP=$(grep -oE "https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec" src/worker.js | head -1)
+          [ -n "$UP" ] || { echo "could not read UPSTREAM from src/worker.js"; exit 1; }
           M=$(date -u +%Y-%m)
           echo "upstream: $UP"
           for i in 1 2 3; do
@@ -42,6 +43,7 @@ jobs:
           WAIT: ${{ inputs.wait_minutes }}
         run: |
           WANT=$(sed -n "s/^export const WORKER_BUILD = '\([^']*\)';/\1/p" src/worker.js)
+          [ -n "$WANT" ] || { echo "could not read WORKER_BUILD from src/worker.js"; exit 1; }
           echo "repo worker build: $WANT"
           M=$(date -u +%Y-%m)
           for i in $(seq 1 $((WAIT * 6))); do

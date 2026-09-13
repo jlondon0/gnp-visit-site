@@ -80,6 +80,15 @@ else
   bad "node is not on PATH; the Worker contract cannot be checked here"
 fi
 
+# 6b. live-check.yml reads three markers out of the checkout with these exact
+#     expressions; the first run on main read an empty upstream URL because the
+#     declaration wraps over two lines. The runner exercises the same
+#     expressions so a reformat is caught here, not on the runner.
+[ -n "$(grep -oE 'https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec' src/worker.js | head -1)" ] && ok || bad "live-check.yml cannot read UPSTREAM from src/worker.js"
+[ -n "$(sed -n "s/^export const WORKER_BUILD = '\([^']*\)';/\1/p" src/worker.js)" ] && ok || bad "live-check.yml cannot read WORKER_BUILD from src/worker.js"
+[ -n "$(sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p' public/calendar.html)" ] && ok || bad "live-check.yml cannot read the calendar build marker"
+grep -q 'grep -oE "https://script\\.google\\.com/macros/s/\[A-Za-z0-9_-\]+/exec" src/worker.js' .github/workflows/live-check.yml && ok || bad "live-check.yml no longer uses the UPSTREAM expression the runner checks"
+
 # 7. The deploy config must be one wrangler accepts. A dry run needs no
 #    Cloudflare access. Only run where a wrangler binary is present (the
 #    build host has its own); its absence is reported, never read as a pass.
