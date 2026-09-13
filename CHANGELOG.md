@@ -32,6 +32,12 @@ Newest first. Each entry states the symptom, the cause and the fix, per
   answers, a failed network with a saved month keeps the grid), wired into the
   runner. Mutation-tested: removing the refresh gap, removing the build header
   and reverting the page to `v2.28.2a` each turn the suite red.
+- Correction, same day: the first live-check run on main (34776226173) failed
+  in its baseline step without measuring anything. It read `UPSTREAM` with a
+  one-line pattern and the declaration wraps over two lines, so the URL came
+  out empty. The job now extracts the URL by shape and fails loudly on an empty
+  marker; the runner exercises the same three expressions against the checkout
+  so a reformat is caught before the push.
 
 ## 2026-09-13 - SWL-KFMU: calendar takes too long to load, then shows an error
 - Symptom: on https://visit.guayacanpreserve.com/calendar.html the grid sat on
