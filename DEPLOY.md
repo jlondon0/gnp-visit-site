@@ -48,9 +48,18 @@ daily cron). It is deployed by hand with `wrangler deploy` and is in no
 repository; a July 2026 snapshot of its source is in Drive under
 "04_Projects / GNP latest site / guayacan-gnp-worker".
 
+## gnp.guayacanpreserve.com is a custom domain of this Worker
+
+Since 2026-09-13 (SWL-FSBY) the main website's image host,
+`gnp.guayacanpreserve.com`, is a Custom Domain on `gnp-visit-site`, alongside
+`visit.guayacanpreserve.com`. Removing it from Domains & Routes takes every
+photo off www.guayacanpreserve.com again; the main page hardcodes that host.
+The bare hostname shows this booking page, which is accepted.
+
 ## Restoring the main website's images (SWL-FSBY)
 
-Two ways. Both are UNVERIFIED from the cloud lane, which cannot reach the site.
+Path A was applied on 2026-09-13 and verified (200 on gallery-2.jpg through
+the new host). Both paths kept for the next time; B is UNVERIFIED.
 
 **A. Point the image hostname at this Worker.** No wrangler needed. In the
 Cloudflare dashboard, Workers and Pages, `gnp-visit-site`, Settings, Domains
