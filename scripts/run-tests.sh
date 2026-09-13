@@ -54,6 +54,38 @@ dim(){ python3 -c "import struct,sys;d=open(sys.argv[1],'rb').read(24);print(*st
 grep -q '"directory": *"./public/"' wrangler.jsonc && ok || bad "wrangler.jsonc assets directory is not ./public/"
 git ls-files | grep -qE '(^|/)@eaDir/|\.DS_Store$' && bad "Synology metadata is tracked in git" || ok
 
+# 6. Availability is served from this Worker's edge copy (SWL-KFMU), never
+#    fetched by the calendar page straight from Apps Script, and the Worker
+#    behind it keeps its contract: fresh hits skip the backend, stale hits are
+#    served while refreshing, errors are never cached, bad months are refused.
+grep -qE "const API_BASE = '/api/calendar'" public/calendar.html && ok || bad "calendar.html does not read availability from /api/calendar"
+grep -qE "fetch\(API_BASE \+ '\?month=" public/calendar.html && ok || bad "calendar.html does not request /api/calendar?month="
+grep -qE "script\.google\.com" public/calendar.html && bad "calendar.html still names script.google.com; the page must not call Apps Script directly" || ok
+grep -qE "signal: ctrl\.signal" public/calendar.html && ok || bad "calendar.html has no fetch timeout; a slow backend leaves the page on Cargando forever"
+grep -q '"main": *"src/worker.js"' wrangler.jsonc && ok || bad "wrangler.jsonc does not deploy src/worker.js"
+grep -q '"binding": *"ASSETS"' wrangler.jsonc && ok || bad "wrangler.jsonc has no ASSETS binding; the Worker cannot serve the pages"
+grep -qE "^const CAL_BUILD = '[^']+'" public/calendar.html && ok || bad "calendar.html has no CAL_BUILD marker for the deployed-vs-repo check"
+if command -v node >/dev/null 2>&1; then
+  if node tests/calendar-proxy.test.mjs 2>/dev/null | grep -q 'calendar-proxy: all'; then ok; else
+    bad "tests/calendar-proxy.test.mjs is red:"; node tests/calendar-proxy.test.mjs 2>&1 | grep -E 'FAIL|^ {7}' | head -12 | sed 's/^/    /'
+  fi
+else
+  bad "node is not on PATH; the Worker contract cannot be checked here"
+fi
+
+# 7. The deploy config must be one wrangler accepts. A dry run needs no
+#    Cloudflare access. Only run where a wrangler binary is present (the
+#    build host has its own); its absence is reported, never read as a pass.
+WRANGLER=""
+for c in ./node_modules/.bin/wrangler "${WRANGLER_BIN:-}"; do [ -n "$c" ] && [ -x "$c" ] && WRANGLER="$c" && break; done
+if [ -n "$WRANGLER" ]; then
+  OUTDIR=$(mktemp -d)
+  if "$WRANGLER" deploy --dry-run --outdir "$OUTDIR" >/dev/null 2>&1 && [ -s "$OUTDIR/worker.js" ]; then ok; else bad "wrangler deploy --dry-run rejected the config or produced no bundle"; fi
+  rm -rf "$OUTDIR"
+else
+  echo "  NOT CHECKED: no wrangler binary (set WRANGLER_BIN or npm install wrangler) - config dry run skipped"
+fi
+
 echo "PASSED: $PASS, FAILED: $FAIL"
 [ "$FAIL" -eq 0 ] && { echo "BASELINE OK"; exit 0; }
 echo "SUITE RED"; exit 1
