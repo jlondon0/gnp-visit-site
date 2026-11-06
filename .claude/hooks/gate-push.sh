@@ -26,14 +26,58 @@ CMD=$(jq -r '.tool_input.command // empty' 2>/dev/null) || exit 0
 #
 # Parsed rather than pattern-matched, because a regex gets this wrong in both
 # directions: it misses `git -C /tmp push` (an option that takes an argument)
-# and it fires on `git commit -m "fix push bug"` (the word in a message). Each
-# shell segment is checked for the shape `git <global-opts> push`.
-IS_PUSH=$(printf '%s' "$CMD" | awk '
+# and it fires on `git commit -m "fix push bug"` (the word in a message).
+#
+# Probed on 2026-09-14 (SWL-PJHK). The previous parser read only the first word
+# of each segment and let seven real invocations through unchecked:
+#
+#   env git push        command git push     GIT_DIR=.git git push
+#   xargs git push      sh -c "git push"     bash -lc "git push"
+#   git push origin main   # --dry-run
+#
+# The last one is the worst shape: line 52 grepped the WHOLE command for the
+# string --dry-run, so writing it in a trailing comment exempted a real push.
+#
+# So: quotes are replaced by spaces (which flattens `sh -c "git push"` into
+# ordinary tokens), a leading VAR=value and a known wrapper command are stepped
+# over, and --dry-run counts only as its own token in the same segment, before
+# any # comment.
+#
+# What this cannot see, and does not pretend to: a push issued from inside a
+# program, e.g. `node -e "...execSync('git push')"`. Bash(node:*) is allowed in
+# settings.json, so that path is open by design. The gate is a guardrail on the
+# ordinary path, not a sandbox.
+# Quotes and backticks become spaces (which flattens `sh -c "git push"` into
+# ordinary tokens), and then heredoc BODIES are dropped. A body is data, not
+# commands: writing this very release note - which quotes the force flag in
+# prose - through a heredoc otherwise reads as a force-push and blocks the
+# session. The delimiter is read off the introducing line and the body skipped
+# up to it; quotes are already gone, so <<EOF and <<'"'"'EOF'"'"' need no separate case.
+SCAN=$(printf '%s' "$CMD" | tr '"'"'"'\140' '   ' | awk '
+  BEGIN { inhd = 0 }
+  {
+    if (inhd) { if ($0 ~ ("^[ \t]*" delim "[ \t]*$")) inhd = 0; next }
+    if (match($0, /<<-?[ \t]*[A-Za-z_][A-Za-z0-9_]*/)) {
+      delim = substr($0, RSTART, RLENGTH)
+      sub(/^<<-?[ \t]*/, "", delim)
+      inhd = 1
+    }
+    print
+  }')
+IS_PUSH=$(printf '%s' "$SCAN" | awk '
   BEGIN { RS = "[;&|\n]+"; found = 0 }
   {
     n = split($0, t, /[ \t]+/)
     i = 1
-    while (i <= n && t[i] == "") i++          # leading blanks
+    wrapped = 0
+    while (i <= n) {
+      if (t[i] == "") { i++; continue }
+      if (t[i] ~ /^[A-Za-z_][A-Za-z0-9_]*=/) { i++; continue }        # VAR=value
+      if (t[i] ~ /(^|\/)(env|command|nohup|time|nice|ionice|stdbuf|xargs|sudo|doas|sh|bash|zsh|dash|ksh)$/) { i++; wrapped = 1; continue }
+      break
+    }
+    # Past a wrapper, the real command can be anywhere in what follows.
+    if (wrapped) { while (i <= n && t[i] != "git") i++ }
     if (t[i] != "git") next
     i++
     while (i <= n) {                           # git global options
@@ -42,14 +86,40 @@ IS_PUSH=$(printf '%s' "$CMD" | awk '
       if (t[i] ~ /^-/)                         { i++; continue }      # --no-pager, -p, ...
       break
     }
-    if (t[i] == "push") found = 1
+    if (t[i] != "push") next
+    # Both remaining questions are answered from the arguments of THIS push, up
+    # to any trailing comment. Asking them of the whole command string is the
+    # substring mistake this rewrite exists to remove - and it bit immediately:
+    # the first version grepped everything for --force and refused a heredoc
+    # that quoted the flag inside this very release entry.
+    #
+    # No apostrophe anywhere in this awk program. It is single-quoted, so one in
+    # a comment closes it; the shell then parses awk as shell, dash exits 2 on
+    # the syntax error, and exit 2 is this hook contract for BLOCK - so a typo in
+    # a comment blocked every Bash call in the session, with a message that
+    # pointed at a for loop rather than at the quote.
+    force = 0
+    for (j = i; j <= n; j++) {
+      if (t[j] ~ /^#/) break
+      if (t[j] == "--dry-run") next                                  # changes nothing
+      if (t[j] ~ /^(--force|--force-with-lease|--force-if-includes|-f)(=|$)/) force = 1
+    }
+    found = 1
+    if (force) forced = 1
   }
-  END { print found }
+  END { print found (forced ? " force" : "") }
 ')
-[ "$IS_PUSH" = "1" ] || exit 0
-
-# A dry run changes nothing; let it through.
-echo "$CMD" | grep -q -- '--dry-run' && exit 0
+case "$IS_PUSH" in
+  "1 force")
+    # A force-push rewrites published history. CLAUDE.md lists it under "always
+    # stop and ask", and the settings.json deny rules are prefix matches, so
+    # `git push origin main --force` slips past them (probed 2026-09-14).
+    echo "swl push gate: BLOCKED - this push rewrites history (--force/-f)." >&2
+    echo "CLAUDE.md puts destroying history under 'always stop and ask'. Ask Jorge, and say what will be lost." >&2
+    exit 2 ;;
+  1) ;;
+  *) exit 0 ;;
+esac
 
 cd "$PROJECT_DIR" 2>/dev/null || exit 0
 

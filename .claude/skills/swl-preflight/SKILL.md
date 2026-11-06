@@ -71,6 +71,21 @@ been checked. `/Volumes/Projects` and `/Volumes/Claude` are the SMB views of
 
 ### NAS lane mechanics
 
+- **A command handed to Jorge carries its own connection.** Not `ssh nas` on one
+  line and `cd /volume1/...` on the next, and not a bare `cd /volume1/...` — he
+  reads these on a phone, a MacBook Pro and a Mac mini, and only one of them is
+  the NAS. The two-step form is the worse of the two: `ssh nas; cd /volume1/...`
+  runs the `cd` **locally**, after the ssh session has already ended, so it
+  fails on a Mac and does something unintended anywhere a `/volume1` exists.
+  Asked for on 2026-09-24, after a handed command failed exactly that way.
+
+  ```bash
+  ssh nas 'bash -lc "cd /volume1/Projects/<repo> && <command>"'
+  ```
+
+  From the NAS itself, drop the wrapper: `ssh nas` there cannot resolve its own
+  hostname. A script whose whole job is a check should carry the `git pull` that
+  makes the check meaningful, rather than leaving it to be remembered.
 - **Use `ssh nas 'bash -lc "..."'`.** The NAS `~/.profile` now exports the full
   PATH — `/usr/local/bin` for node and npm, `/volume1/Projects/Utilities/bin`
   for `gh` — for non-interactive login shells, which is what `bash -lc` gets. It
@@ -183,6 +198,7 @@ Every repo, no exceptions:
 | `tests/` + runner | Exits non-zero on failure, prints one verdict line |
 | Deploy config | `wrangler.jsonc` (Cloudflare) or `.clasp.json` (Apps Script) |
 | Version marker | Single source in code, asserted by a test, reported at runtime |
+| Signed commits | Every commit signed by an SSH or GPG key registered on the author's GitHub account, so GitHub shows it verified. Cloud sessions sign already; a box signs after `node scripts/signed-commits.mjs setup` in the toolbox; `ship.mjs` refuses to deploy a commit GitHub did not verify |
 
 Binary assets do not belong in Git unless they are the product.
 
@@ -251,6 +267,15 @@ migration table: `infrastructure/SV7N.md` in swl-canon.
 
 - **Never in Git.** `.env` per project, `.env.example` committed, secret
   scanning before commit.
+- **One signing key per box, registered on GitHub as a signing key.** A
+  commit's signature is verified against the keys of the account that owns
+  the committer address, so the key must be on that account and the address
+  must be one of its addresses. The same SSH key the box uses to push will do;
+  `node scripts/signed-commits.mjs setup` in the toolbox configures git and
+  registers it. Found 2026-10-15: thirteen repositories carried only unsigned
+  commits, and one carried commits signed by the cloud sessions' key under a
+  personal committer address, which GitHub reports as `unknown_key`. Do not
+  set a personal `user.email` inside a cloud session.
 - **Credentials live on the NAS, once.** A token on a Mac is a token that exists
   twice and drifts: on 2026-09-07 the Mac mini's clasp credential had expired
   (`invalid_grant: invalid_rapt`), `gh` was authorised there and nowhere else,
@@ -269,6 +294,28 @@ migration table: `infrastructure/SV7N.md` in swl-canon.
 - **Known exception:** `~/.swl-env` on the NAS holds `CLOUDFLARE_API_TOKEN`, mode
   600, because `wrangler login` needs a browser and the build host is headless.
   Documented, not hidden. Never read, echo, or copy it.
+
+  **Confirmed present, 2026-09-15 (`SWL-3AC4`).** `wrangler whoami` on the NAS
+  authenticates against account `c6d8e26bc4dea8a74c09e691d92a3aa2` and reports
+  the token as read from the `CLOUDFLARE_API_TOKEN` environment variable. The
+  lane table said the opposite until this release, on a finding from
+  2026-09-08 that a whole session's planning rested on. **The check that
+  produced the wrong answer was `grep -c '^CLOUDFLARE_API_TOKEN=' ~/.swl-env`,
+  which returns 0 against a file whose line reads `export
+  CLOUDFLARE_API_TOKEN=…`.** An anchored grep is a claim about formatting; a
+  token is proven by using it. `wrangler whoami` is the check, and it is the
+  one to run before recording a Cloudflare limit again.
+
+  **Scope is untested.** `whoami` could not read User Details, so the token is
+  narrow. It demonstrably carries Workers Scripts:Edit — that is how the
+  toolbox ships — but whether it carries the Zone:Read and Workers Routes:Edit
+  that binding a custom domain needs is unknown. The deploy reports it, so the
+  test is the attempt.
+
+  **Scope measured, 2026-11-06.** The token attached Workers custom domains on
+  sv7n.app through the API and lists Access applications, but a DNS records
+  read returns Authentication error, so DNS changes still go through the
+  dashboard.
 - **Third-party APIs are a dependency, not a detail.** Record which host, which
   endpoint, the free-tier limit, and the failure mode. Some vendors answer quota
   exhaustion with HTTP 200 and prose — handle that explicitly or it reads as
@@ -303,10 +350,14 @@ and is corrected in writing — in the changelog, not only in conversation.
 
 - **`Guayacan` — no tilde, everywhere.** Code, templates, config, UI strings,
   documents. Not `Guayacán`.
-- Meta's consoles are dense and change often; when writing instructions for
-  them, start from an exact URL, name every click by its printed label in order,
-  and name the controls to leave alone. See canon §6b for the full recipe and
-  the four recorded mistakes.
+- **Every link in an instruction is a complete, clickable URL**, deep-linked to
+  the exact page and pinned to the account, project or property where the console
+  takes a parameter for it. Never a bare path, never "go to the dashboard".
+  Vendor consoles — Meta, Google Cloud, Cloudflare, Apple — are dense and change
+  often, so also name every click by its printed label in order and name the
+  controls to leave alone. This was scoped to Meta until 2026-09-18, and the
+  scoping was the defect: a set of Google Cloud instructions went out with a bare
+  console path. See canon §6b for the full recipe and the recorded mistakes.
 
 ---
 
@@ -344,16 +395,21 @@ a defect to log, not a local peculiarity to work around.
   keys server-side is deployed, healthy and unused. `jlondon0/habibi` holds a
   sanitized copy (no key ever committed) and the ordered fix; **rotation is
   step 1 and is Jorge's.** Highest-severity open item in the estate.
-- **G11** — **The pXPNS baseline tolerates failures by count, not identity.**
-  `scripts/run-tests.sh:56` is `[ "$FAILS" -le 2 ] && exit 0 || exit 1`, so any
-  two failing assertions pass. It sits at exactly two today, so one more does
-  block — but the guard cannot tell a known-benign failure from a fresh
-  regression. **The push gate delegates to this verdict, so every automated push
-  in that repo inherits the tolerance.** Close by pinning the baseline to the
-  identity of the two known assertions rather than their count.
-- **G12** — pXPNS has no committed lockfile. `npm ci` fails; `fake-indexeddb` is
-  pinned to `"*"`. A clean clone is not reproducible, and a missing dependency
-  crashes two suites, which reads as red for an environment reason.
+- **G11** — *Closed 2026-09-14 (pXPNS 2.80).* The tolerance was removed in 2.56a,
+  and 2.80 closed the larger hole behind it: the runner read the LAST verdict
+  line and ignored each suite's exit status, so a suite printing a red verdict
+  then a green one, a suite exiting non-zero after a clean verdict, a suite that
+  threw after printing one, and a suite whose extractor found nothing all scored
+  as green. A suite now needs all four — exit zero, exactly one verdict, zero
+  failures, something asserted. The push gate delegates to that verdict, so the
+  gate is exactly as strict as the runner, which is now strict. Original text:
+  `scripts/run-tests.sh:56` was `[ "$FAILS" -le 2 ] && exit 0 || exit 1`.
+
+- **G12** — *Closed.* pXPNS has a committed `package-lock.json` pinning
+  `fake-indexeddb` 6.2.5 with an integrity hash, and `npm ci` was run from a
+  clean `node_modules` on 2026-09-14 and succeeded. Its version field had drifted
+  behind `package.json` (2.76 vs 2.79) because `npm install` rewrites it; both
+  are bumped together now.
 
 - **G14** — *Closed 2026-10-18.* `relo` had no vendored Claude config and so no
   push gate of its own; `scripts/sync-claude-config.sh relo` created `.claude/`,
@@ -361,8 +417,21 @@ a defect to log, not a local peculiarity to work around.
   a complete throwaway copy: green suite, exit 0, "Push allowed"; one deliberate
   failing assertion, exit 2, "BLOCKED". Note the sync pushes straight to `main`
   in every repo it touches, so name the repos rather than running the manifest.
+- **G15** — *Closed 2026-11-06* (canon now carries the fixed hook, and the sync
+  takes it to every repo). **The push gate is bypassed by commands `settings.json` allows.**
+  Found and closed in pXPNS 2.80, and it is a CANON issue because the hook is
+  shared: the parser read only the first word of each shell segment, so
+  `env git push`, `command git push`, `GIT_DIR=.git git push`, `xargs git push`,
+  `sh -c "git push"` and `bash -lc "git push"` all passed unchecked, and the
+  `--dry-run` exemption grepped the whole command string, so writing the flag in
+  a trailing comment exempted a real push. pXPNS now flattens quotes, drops
+  heredoc bodies, steps over wrappers and `VAR=value` prefixes, and refuses a
+  force-push outright (the `settings.json` deny rules are prefix matches, so
+  `git push origin main --force` slips past them). **The fixed hook is in
+  `jlondon0/pxpns` at `.claude/hooks/gate-push.sh`; canon took it on
+  2026-11-06.**
 
-Sequencing: G3/G7 first (minutes, no risk) → G5/G6 → G12 → G11 → G2 on GNP →
+Sequencing: G3/G7 first (minutes, no risk) → G5/G6 → G2 on GNP →
 G1 → G8 → G4.
 
 **On the push gate's authority.** `.claude/hooks/gate-push.sh` blocks a push
