@@ -69,8 +69,11 @@ if [ -z "$RUNNER" ]; then
   exit 0
 fi
 
-echo "swl push gate: running '$RUNNER' before allowing the push..." >&2
-OUT=$($RUNNER 2>&1)
+# In a LOGIN shell, so the suite sees the environment ~/.profile sets and the
+# hook's inherited one does not (NODE_ICU_DATA on the NAS - see the workbench
+# gate, 2026-10-18). The cd is repeated inside, after the profile has run.
+echo "swl push gate: running '$RUNNER' (login shell) before allowing the push..." >&2
+OUT=$(bash -lc 'cd "$1" && '"$RUNNER" _ "$(pwd)" 2>&1)
 STATUS=$?
 
 if [ $STATUS -ne 0 ]; then

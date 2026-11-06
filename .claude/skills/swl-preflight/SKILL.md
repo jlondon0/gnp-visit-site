@@ -19,7 +19,7 @@ Know which one you are in before planning anything. Each reaches different thing
 | Lane | Runs on | Can reach | Cannot reach |
 |---|---|---|---|
 | **Cloud** — claude.ai/code session | Anthropic sandbox | GitHub, Anthropic API | Cloudflare, Google, the NAS, any LAN host, any vendor API |
-| **NAS** — local session using `ssh nas` | Synology DS920+ | The working copies, GitHub (SSH key), Apps Script (clasp), every deploy path that runs there | **Cloudflare API** — `~/.swl-env` holds no token, found 2026-09-08 while sundowning a project. Anything needing the Cloudflare API is unverifiable from here until one is added. |
+| **NAS** — local session using `ssh nas` | Synology DS920+ | The working copies, GitHub (SSH key), Apps Script (clasp), the Cloudflare API, every deploy path that runs there | Nothing material. Cloudflare was unreachable here until a token was added to `~/.swl-env`; corrected 2026-10-18, and the connection gate now proves `wrangler whoami` against it every session. Source a command's token inside the command: `. ~/.swl-env && ./node_modules/.bin/wrangler ...` |
 | **Mac** — local session, no ssh | this Mac | SMB shares, photos, local files | the working copies (see below) |
 
 **In the Cloud lane, the git push *is* the deploy.** That is the documented
@@ -193,7 +193,7 @@ how the wrong build wins.
 
 ---
 
-## 7. Deploy map — verified 2026-08-28
+## 7. Deploy map — verified 2026-08-28; Relocation Finder added 2026-10-18
 
 | Project | Repo | Mechanism | Trigger | Manual step |
 |---|---|---|---|---|
@@ -204,6 +204,7 @@ how the wrong build wins.
 | JLP site | `jlondon0/jlp-website` | GitHub Actions (`publish.yml`) | 30-min schedule + on demand | none, but not push-triggered |
 | SWL Toolbox | `jlondon0/swl-toolbox` | `node ship.mjs` on the NAS | run by hand | typed `y` for production |
 | SWL Requests | `jlondon0/swl-toolbox` (`requests/`) | same release as the toolbox | same | same |
+| Relocation Finder | `jlondon0/relo` | Cloudflare Workers Builds | push to `main` | none; the build runs the suite and every mutation, then D1 migrations, then deploy. `scripts/ship.sh` is emergency-only and must never run while Builds is connected |
 | SWL main site | `jlondon0/swl-site` | `wrangler deploy` on the NAS | run by hand | not yet on Workers Builds |
 
 The toolbox and requests Workers deploy as **one release** from one repository.
@@ -219,6 +220,15 @@ says so rather than passing.
 
 **Target for all new projects:** GitHub repo, tests, Cloudflare Workers Builds
 Git integration. Push to `main` is the deploy.
+
+**Domains: sv7n.app (decided 2026-11-06).** Internal apps live at
+`<app>.sv7n.app`, QA at `qa.<app>.sv7n.app`. Customer sample apps (photography,
+events) are built and shown at `<sample>.sv7n.app`; when a customer signs, the
+app graduates to the customer's own domain, hosted in Cloudflare. Brand sites
+stay on their domains. Every new development reads its host from configuration,
+never hard-codes it, and keeps every binding in the wrangler config so it can
+move to another domain or Cloudflare account. Strategy, hazards and the
+migration table: `infrastructure/SV7N.md` in swl-canon.
 
 ### Constraints that hold everywhere
 
@@ -344,6 +354,13 @@ a defect to log, not a local peculiarity to work around.
 - **G12** — pXPNS has no committed lockfile. `npm ci` fails; `fake-indexeddb` is
   pinned to `"*"`. A clean clone is not reproducible, and a missing dependency
   crashes two suites, which reads as red for an environment reason.
+
+- **G14** — *Closed 2026-10-18.* `relo` had no vendored Claude config and so no
+  push gate of its own; `scripts/sync-claude-config.sh relo` created `.claude/`,
+  `CLAUDE.md` and `scripts/preflight.sh`. The vendored hook was then run against
+  a complete throwaway copy: green suite, exit 0, "Push allowed"; one deliberate
+  failing assertion, exit 2, "BLOCKED". Note the sync pushes straight to `main`
+  in every repo it touches, so name the repos rather than running the manifest.
 
 Sequencing: G3/G7 first (minutes, no risk) → G5/G6 → G12 → G11 → G2 on GNP →
 G1 → G8 → G4.
