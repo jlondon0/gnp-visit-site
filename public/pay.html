@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: pay v2.30.1 · 2026-08-07 -->
+<!-- GNP-BUILD: pay v2.38.0 · 2026-11-13 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -87,13 +87,18 @@ function render(d){
   document.getElementById('metaLine').textContent='Estado: '+d.estado+' | Pago: '+d.paymentStatus;
   document.getElementById('fecha').textContent=d.fecha;
   document.getElementById('jornada').textContent=(d.jornadaLabel || d.jornada);
-  document.getElementById('amt').textContent=(d.paymentCurrency==='COP')
+  document.getElementById('amt').textContent=d.currencyUnknown ? '—' : (d.paymentCurrency==='COP')
     ? copFmt(d.paymentAmount)+(d.paymentUsd!=null?' / '+usdFmt(d.paymentUsd):'')
     : d.paymentAmount+' '+d.paymentCurrency;
   var zone=document.getElementById('payZone');
 
   if(d.comprobanteSubmitted){
     zone.innerHTML='<div class="msg show info">Ya recibimos tu comprobante. Verificaremos el pago y te confirmaremos por correo y WhatsApp.</div>';
+    return;
+  }
+  if(d.currencyUnknown){
+    // Backend v2.38.0: a booking without a known currency cannot be paid until a person fixes it.
+    zone.innerHTML='<div class="notice">Tu reserva está en revisión antes del pago. Te contactaremos pronto. / Your booking is being reviewed before payment. We will contact you shortly.</div>';
     return;
   }
   if(!d.canPay){

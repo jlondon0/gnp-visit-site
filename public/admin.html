@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: admin v2.28.0 · 2026-08-01 -->
+<!-- GNP-BUILD: admin v2.38.0 · 2026-11-13 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -450,7 +450,10 @@ function openCancel(resId, policyPct){
   const sel = document.getElementById('cancelReason');
   const reasons = (DATA && DATA.cancelReasons) ? DATA.cancelReasons : ['Cliente','Fuerza mayor / clima','Accidente','Operativa','Otro'];
   sel.innerHTML = reasons.map(x => '<option>' + x + '</option>').join('');
-  document.getElementById('cancelRefund').value = (policyPct != null ? policyPct : 100);
+  // No policy figure means the visit date could not be read (backend v2.38.0). Never
+  // pre-fill 100: leave it blank so the operator decides, and say why.
+  const unknownPolicy = (policyPct == null);
+  document.getElementById('cancelRefund').value = unknownPolicy ? '' : policyPct;
   const opSel = document.getElementById('cancelOperator');
   const opList = (DATA && DATA.operators) ? DATA.operators : [];
   opSel.innerHTML = '<option value="">Selecciona quién cancela...</option>' + opList.map(function(n){ return '<option>' + n + '</option>'; }).join('');
@@ -458,6 +461,10 @@ function openCancel(resId, policyPct){
   const msg = document.getElementById('cancelMsg'); msg.style.display = 'none';
   const btn = document.getElementById('cancelConfirmBtn'); btn.disabled = false; btn.textContent = 'Confirmar cancelación';
   onReasonChange();
+  if (unknownPolicy && document.getElementById('cancelRefund').value === '') {
+    msg.style.display = 'block'; msg.style.background = '#FFF4D6'; msg.style.color = '#7A5A00';
+    msg.textContent = 'La fecha de esta reserva no se puede leer, así que no hay reembolso de política. Revisa la fecha y escribe el reembolso.';
+  }
   document.getElementById('cancelOverlay').classList.add('show');
 }
 function onReasonChange(){
@@ -471,7 +478,9 @@ async function confirmCancel(){
   const msg = document.getElementById('cancelMsg');
   const btn = document.getElementById('cancelConfirmBtn');
   function err(t){ msg.style.display='block'; msg.style.background='#FBE5EA'; msg.style.color='#A3274C'; msg.textContent=t; }
-  const refund = Number(document.getElementById('cancelRefund').value);
+  const refundRaw = String(document.getElementById('cancelRefund').value).trim();
+  if (refundRaw === ''){ err('Escribe el reembolso a emitir (0 a 100).'); return; }
+  const refund = Number(refundRaw);
   if (isNaN(refund) || refund < 0 || refund > 100){ err('Reembolso debe estar entre 0 y 100.'); return; }
   const operator = document.getElementById('cancelOperator').value.trim();
   if (!operator){ err('Selecciona quién cancela (auditoría).'); return; }

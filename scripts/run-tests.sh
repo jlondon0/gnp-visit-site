@@ -76,6 +76,13 @@ if command -v node >/dev/null 2>&1; then
   if [ $? -eq 0 ] && printf '%s\n' "$PAGE_OUT" | grep -q '^# fail 0$'; then ok; else
     bad "tests/calendar-page.test.mjs is red:"; printf '%s\n' "$PAGE_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
   fi
+  # Unknown must block on the pages too (backend v2.38.0): the admin cancel
+  # dialog never pre-fills 100% without a policy figure, and the pay page never
+  # shows or charges a booking whose currency is unknown.
+  UB_OUT=$(node --test tests/unknown-blocks.test.mjs 2>&1)
+  if [ $? -eq 0 ] && printf '%s\n' "$UB_OUT" | grep -q '^# fail 0$'; then ok; else
+    bad "tests/unknown-blocks.test.mjs is red:"; printf '%s\n' "$UB_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
+  fi
 else
   bad "node is not on PATH; the Worker contract cannot be checked here"
 fi
