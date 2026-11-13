@@ -83,6 +83,13 @@ if command -v node >/dev/null 2>&1; then
   if [ $? -eq 0 ] && printf '%s\n' "$UB_OUT" | grep -q '^# fail 0$'; then ok; else
     bad "tests/unknown-blocks.test.mjs is red:"; printf '%s\n' "$UB_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
   fi
+  # Backend v2.39.0 on the pages: the pay page offers the mock only when the
+  # backend says mockEnabled === true (an older backend sends nothing = off),
+  # and the admin page never shows or blanks a redacted SysAdmin secret.
+  DF_OUT=$(node --test tests/defects-v2.39.test.mjs 2>&1)
+  if [ $? -eq 0 ] && printf '%s\n' "$DF_OUT" | grep -q '^# fail 0$'; then ok; else
+    bad "tests/defects-v2.39.test.mjs is red:"; printf '%s\n' "$DF_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
+  fi
 else
   bad "node is not on PATH; the Worker contract cannot be checked here"
 fi

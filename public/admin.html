@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: admin v2.38.0 · 2026-11-13 -->
+<!-- GNP-BUILD: admin v2.39.0 · 2026-11-13 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -220,7 +220,7 @@ tr:last-child td{border-bottom:none;}
 
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const ADMIN_BUILD = 'v2.17.0 · 2026-07-17';
+const ADMIN_BUILD = 'v2.39.0 · 2026-11-13';
 console.log('[GNP] admin build ' + ADMIN_BUILD);
 let pwd = '';
 let DATA = { sysadmin: [], reservations: [], pedidos: [] };
@@ -335,16 +335,22 @@ function renderAll() {
   if (ROLE === 'ops') { renderCocinaSummary(); renderCocina(); }
 }
 
+// Backend v2.39.0 never sends a secret value: a secret row is [key, '', {isSecret, isSet}].
+// An older backend sends [key, value]; the page still masks it by name.
+function cfgIsSecret(row) { return !!(row && row[2] && row[2].isSecret === true); }
+function cfgIsSet(row) { return !!(row && row[2] && row[2].isSet === true); }
+
 function renderConfig() {
   const container = document.getElementById('sysGroups');
   container.innerHTML = '';
 
   const buckets = {};
-  DATA.sysadmin.forEach(([key, val]) => {
+  DATA.sysadmin.forEach((r) => {
+    const key = r[0];
     if (!key) return;
     const g = groupFor(String(key));
     if (!buckets[g]) buckets[g] = [];
-    buckets[g].push([key, val]);
+    buckets[g].push(r);
   });
 
   const orderedTitles = CONFIG_GROUPS.map(g => g.title).concat(['Otros']);
@@ -369,13 +375,17 @@ function renderConfig() {
       groupEl.appendChild(subEl);
     }
 
-    rows.forEach(([key, val]) => {
-      const isPwd = String(key).toLowerCase().includes('password') || String(key).toLowerCase().includes('secret') || String(key).toLowerCase().includes('token');
+    rows.forEach((r) => {
+      const key = r[0], val = r[1];
+      const secret = cfgIsSecret(r);
+      const isPwd = secret || String(key).toLowerCase().includes('password') || String(key).toLowerCase().includes('secret') || String(key).toLowerCase().includes('token');
+      const shown = secret ? '' : String(val == null ? '' : val);
+      const ph = secret ? (cfgIsSet(r) ? 'configurado — escribe para reemplazar' : 'sin configurar — escribe para definir') : '';
       const row = document.createElement('div');
       row.className = 'sysrow';
       row.innerHTML = `
         <div class="key">${key}</div>
-        <div class="val"><input value="${String(val).replace(/"/g,'&quot;')}" ${isPwd ? 'type="password"' : ''} id="cfg_${key}" onkeydown="if(event.key==='Enter')saveKey('${key}')"></div>
+        <div class="val"><input value="${shown.replace(/&/g,'&amp;').replace(/"/g,'&quot;')}" ${isPwd ? 'type="password" autocomplete="new-password"' : ''} ${ph ? 'placeholder="' + ph + '"' : ''} id="cfg_${key}" onkeydown="if(event.key==='Enter')saveKey('${key}')"></div>
         <div class="actions"><button class="btn btn-save btn-sm" onclick="saveKey('${key}')">Guardar</button></div>`;
       groupEl.appendChild(row);
     });
@@ -388,13 +398,21 @@ async function saveKey(key) {
   const input = document.getElementById('cfg_' + key);
   if (!input) return;
   const value = input.value;
+  const idx = DATA.sysadmin.findIndex(r => r[0] === key);
+  const secret = idx >= 0 && cfgIsSecret(DATA.sysadmin[idx]);
+  // A secret field starts empty because the backend never sends the value; empty means
+  // "unchanged", so nothing is sent. Only a newly typed value replaces it.
+  if (secret && !String(value).trim()) {
+    showMsg('configMsg', 'Sin cambios: ' + key + '. Escribe el nuevo valor para reemplazarlo.', 'err');
+    return;
+  }
   try {
     const r = await fetch(API, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify({action:'adminSave',pwd,key,value}) });
     const j = await r.json();
     showMsg('configMsg', j.ok ? 'Guardado: ' + key : (j.error || 'Error'), j.ok ? 'ok' : 'err');
-    if (j.ok) {
-      const idx = DATA.sysadmin.findIndex(r => r[0] === key);
-      if (idx >= 0) DATA.sysadmin[idx][1] = value;
+    if (j.ok && idx >= 0) {
+      if (secret) { DATA.sysadmin[idx][2] = { isSecret: true, isSet: true }; input.value = ''; renderConfig(); }
+      else DATA.sysadmin[idx][1] = value;
     }
   } catch(e) { showMsg('configMsg', String(e), 'err'); }
 }
