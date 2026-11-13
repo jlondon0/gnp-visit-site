@@ -3,6 +3,23 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-11-13 - Pay and admin pages for backend v2.39.0: no mock payment, no secrets
+- Pay page (`pay` v2.39.0): whenever the manual lane was not offered the page
+  showed "Pagar con tarjeta", which called `confirmPaymentMock` and confirmed the
+  booking with no money received. There is no card gateway (owner decision
+  2026-11-13). The button now appears only when the backend says
+  `mockEnabled === true` (SysAdmin `PAYMENT_MOCK_ENABLED`, default off); an
+  older backend sends no such field, which reads as off. Otherwise the guest is
+  told we will contact them to arrange the deposit. `doPay` refuses on its own
+  unless the last payload enabled the mock.
+- Admin page (`admin` v2.39.0, `ADMIN_BUILD` aligned with the backend): backend
+  v2.39.0 sends secret SysAdmin rows as `[key, '', {isSecret, isSet}]`. The page
+  shows an empty password field with "configurado — escribe para reemplazar" or
+  "sin configurar — escribe para definir", never renders a value on a secret
+  row, and never sends a blank for a secret (empty means unchanged).
+- Tests: `tests/defects-v2.39.test.mjs`, run by `scripts/run-tests.sh`. Each
+  fix was removed in turn and the suite went red.
+
 ## 2026-09-13 - SWL-KFMU follow-up: verify the edge copy on the running site, and harden it
 - Two sessions took the request at once; the entry below shipped first as #5
   and is the fix. This entry is what the second session added on top of it.

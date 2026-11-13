@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: pay v2.38.0 · 2026-11-13 -->
+<!-- GNP-BUILD: pay v2.39.0 · 2026-11-13 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -66,6 +66,7 @@ h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin-bottom:4px;}
 <script>
 const API='https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
 const token=new URLSearchParams(window.location.search).get('token')||'';
+let PAY_DATA=null; // the last pay payload; doPay reads mockEnabled from it
 function copFmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CO')+' COP';}
 function usdFmt(n){return 'US$'+(Number(n)||0).toFixed(2);}
 function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -81,6 +82,7 @@ async function load(){
 function showLoadErr(msg){document.getElementById('loadCard').innerHTML='<p style="color:#A3274C;text-align:center;padding:10px 0;">'+esc(msg)+'</p>';}
 
 function render(d){
+  PAY_DATA=d;
   document.getElementById('loadCard').style.display='none';
   document.getElementById('payCard').style.display='block';
   document.getElementById('resId').textContent=d.reservationId;
@@ -123,8 +125,14 @@ function render(d){
       '<label class="upload">Subir comprobante<input type="file" accept="image/*,application/pdf" onchange="submitComprobante(this)"></label>';
     return;
   }
-  // Foreign / card lane (placeholder mock until gateway is live)
-  zone.innerHTML='<button class="btn btn-pay" id="btnPay" onclick="doPay()">Pagar con tarjeta</button>';
+  // Backend v2.39.0: the mock confirms a booking with no money received, so it is offered
+  // only when the backend says mockEnabled === true (SysAdmin PAYMENT_MOCK_ENABLED).
+  // Older backends send no such field, which reads as off. There is no card gateway.
+  if(d.mockEnabled===true){
+    zone.innerHTML='<button class="btn btn-pay" id="btnPay" onclick="doPay()">Pagar con tarjeta</button>';
+    return;
+  }
+  zone.innerHTML='<div class="notice">Te contactaremos para coordinar el pago del depósito. / We will contact you to arrange the deposit payment.</div>';
 }
 
 async function submitComprobante(input){
@@ -148,6 +156,7 @@ async function submitComprobante(input){
 }
 
 async function doPay(){
+  if(!PAY_DATA||PAY_DATA.mockEnabled!==true){setMsg('err','El pago en línea no está disponible. Te contactaremos para coordinar el pago.');return;}
   document.getElementById('btnPay').disabled=true;
   try{
     var r=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},
