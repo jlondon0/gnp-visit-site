@@ -26,11 +26,21 @@
  * then serves everyone behind that data centre. KV would make the copy global
  * and survive evictions; that is the documented next step in DEPLOY.md and
  * needs a namespace created in the dashboard first.
+ *
+ * Backend switch (track/engine, src/engine.js): with the Worker variable
+ * ENGINE_BASE set, /api/calendar is built from the sv7n engine's availability
+ * instead of Apps Script (same answer shape, cached the same way under a key
+ * of its own), /config.js tells the pages to use the engine, /engine/api/...
+ * forwards the guest routes to ENGINE_BASE, and the engine's guest links
+ * (/guest/bookings/<token>, /bookings/<token>) land on pay and manage. With
+ * ENGINE_BASE unset everything behaves as before.
  */
+
+import { engineConfig, configScript, handleEngineApi, guestRedirect, engineMonth } from './engine.js';
 
 // Single source of the Worker's version, reported on every /api/calendar
 // answer as x-gnp-worker so a deploy can be checked against the repo.
-export const WORKER_BUILD = 'calendar-cache v1.0.1 · 2026-09-13';
+export const WORKER_BUILD = 'calendar-cache v1.1.0 · 2026-11-16';
 
 export const UPSTREAM =
   'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
@@ -54,8 +64,12 @@ function json(body, status, extra) {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
-function cacheKey(month) {
-  return new Request(CACHE_ORIGIN + '/calendar/' + month, { method: 'GET' });
+// The Apps Script copy keeps its original key; an engine copy is keyed by the
+// engine's host, so switching ENGINE_BASE (or rolling it back) never serves a
+// month cached from the other backend.
+function cacheKey(month, source) {
+  const prefix = source ? '/calendar/engine/' + encodeURIComponent(source) + '/' : '/calendar/';
+  return new Request(CACHE_ORIGIN + prefix + month, { method: 'GET' });
 }
 
 /* Ask the backend for one month. Resolves to the raw JSON text only when the
@@ -80,8 +94,8 @@ async function fetchUpstream(month, fetchImpl) {
   return text;
 }
 
-async function storeCopy(cache, month, text, fetchedAt, refreshingAt) {
-  await cache.put(cacheKey(month), new Response(text, {
+async function storeCopy(cache, month, text, fetchedAt, refreshingAt, source) {
+  await cache.put(cacheKey(month, source), new Response(text, {
     status: 200,
     headers: {
       'content-type': 'application/json; charset=utf-8',
@@ -96,8 +110,8 @@ async function storeCopy(cache, month, text, fetchedAt, refreshingAt) {
  * the backend failed (already logged). */
 async function refresh(cache, month, deps) {
   try {
-    const text = await fetchUpstream(month, deps.fetch);
-    await storeCopy(cache, month, text, deps.now());
+    const text = deps.upstream ? await deps.upstream(month) : await fetchUpstream(month, deps.fetch);
+    await storeCopy(cache, month, text, deps.now(), 0, deps.source);
     return text;
   } catch (err) {
     console.warn('[calendar] backend failed for ' + month + ': ' + (err && err.message));
@@ -114,7 +128,7 @@ export async function handleCalendar(request, ctx, deps) {
 
   const cache = deps.cache;
   const now = deps.now();
-  const hit = await cache.match(cacheKey(month));
+  const hit = await cache.match(cacheKey(month, deps.source));
   if (hit) {
     const fetchedAt = Number(hit.headers.get('x-gnp-fetched-at')) || 0;
     const age = now - fetchedAt;
@@ -130,7 +144,7 @@ export async function handleCalendar(request, ctx, deps) {
     // copy stamped as refreshing, and the rest within REFRESH_GAP_MS ride it.
     const refreshingAt = Number(hit.headers.get('x-gnp-refreshing-at')) || 0;
     if (now - refreshingAt > REFRESH_GAP_MS) {
-      ctx.waitUntil(storeCopy(cache, month, text, fetchedAt, now).then(() => refresh(cache, month, deps)));
+      ctx.waitUntil(storeCopy(cache, month, text, fetchedAt, now, deps.source).then(() => refresh(cache, month, deps)));
     }
     return new Response(text, { status: 200, headers: json({}, 200, {
       'x-gnp-cache': 'stale', 'age': String(Math.floor(age / 1000)) }).headers });
@@ -148,16 +162,23 @@ export async function handleCalendar(request, ctx, deps) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+    if (url.pathname === '/config.js') return configScript(env);
+    if (url.pathname.startsWith('/engine/')) return handleEngineApi(request, env, (u, init) => fetch(u, init));
     if (url.pathname === '/api/calendar') {
       if (request.method !== 'GET' && request.method !== 'HEAD') {
         return json({ ok: false, error: 'method not allowed' }, 405);
       }
-      return handleCalendar(request, ctx, {
-        cache: caches.default,
-        fetch: (u, init) => fetch(u, init),
-        now: () => Date.now(),
-      });
+      const deps = { cache: caches.default, fetch: (u, init) => fetch(u, init), now: () => Date.now() };
+      const engine = engineConfig(env);
+      if (engine.on) {
+        if (!engine.base) return json({ ok: false, error: 'engine_misconfigured', message: engine.error }, 503);
+        deps.source = new URL(engine.base).host;
+        deps.upstream = (month) => engineMonth(month, engine.base, engine.eventTypes, deps.fetch);
+      }
+      return handleCalendar(request, ctx, deps);
     }
+    const redirect = guestRedirect(env, url);
+    if (redirect) return redirect;
     return env.ASSETS.fetch(request);
   },
 };

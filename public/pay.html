@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: pay v2.39.0 · 2026-11-13 -->
+<!-- GNP-BUILD: pay v2.40.0 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -63,9 +63,17 @@ h1{font-family:'Fraunces';font-weight:600;font-size:1.4rem;margin-bottom:4px;}
     <a href="https://instagram.com/guayacanpreserve" target="_blank">Instagram</a>
   </div>
 </div>
+<script src="/config.js"></script>
+<script src="/engine-client.js"></script>
 <script>
 const API='https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+// Engine mode (Worker ENGINE_BASE): the deposit is paid through Stripe Checkout
+// only (card, Apple Pay, Google Pay). No transfer, Nequi, Bre-B, Zelle, receipt
+// upload or mock is offered: renderEngine draws none of them.
+const ENGINE=!!(window.GnpEngine&&window.GnpEngine.enabled());
 const token=new URLSearchParams(window.location.search).get('token')||'';
+const RETURNED=new URLSearchParams(window.location.search).get('payment')||''; // Stripe return: success | cancelled
+let ENGINE_LANG='ES';
 let PAY_DATA=null; // the last pay payload; doPay reads mockEnabled from it
 function copFmt(n){return '$'+Math.round(Number(n)||0).toLocaleString('es-CO')+' COP';}
 function usdFmt(n){return 'US$'+(Number(n)||0).toFixed(2);}
@@ -75,10 +83,50 @@ function showDone(title,body){document.getElementById('payCard').style.display='
 
 async function load(){
   if(!token){showLoadErr('Token faltante.');return;}
+  if(ENGINE) return loadEngine();
   try{const r=await fetch(API+'?action=pay&token='+encodeURIComponent(token));const j=await r.json();
     if(!j.ok){showLoadErr(j.error||'No se pudo cargar.');return;}render(j.data);}
   catch(e){showLoadErr(String(e));}
 }
+async function loadEngine(){
+  try{
+    const both=await Promise.all([GnpEngine.getJson(GnpEngine.guestUrl(token)),GnpEngine.getJson(GnpEngine.guestUrl(token,'/payment-options'))]);
+    if(!both[0].ok){showLoadErr(GnpEngine.errorText(both[0],'No se pudo cargar.','ES'));return;}
+    renderEngine(both[0],both[1]);
+  }catch(e){showLoadErr(String(e));}
+}
+
+function renderEngine(view,opts){
+  const s=GnpEngine.bookingSummary(view);
+  ENGINE_LANG=s.lang==='en'?'EN':'ES';
+  const t=GnpEngine.text(ENGINE_LANG), st=GnpEngine.payState(opts,ENGINE_LANG), EN=ENGINE_LANG==='EN';
+  document.getElementById('loadCard').style.display='none';
+  document.getElementById('payCard').style.display='block';
+  document.getElementById('resId').textContent=s.ref;
+  document.getElementById('metaLine').textContent=(EN?'Status: ':'Estado: ')+s.status+(EN?' | Paid: ':' | Pago: ')+(s.paid||'—');
+  document.getElementById('fecha').textContent=s.date;
+  document.getElementById('jornada').textContent=s.session;
+  document.querySelector('.amount .label').textContent=st.label||t.deposit;
+  document.getElementById('amt').textContent=st.amount||'—';
+  var zone=document.getElementById('payZone');
+  if(RETURNED==='success'){zone.innerHTML='<div class="msg show ok">'+esc(t.paid)+'</div>';return;}
+  if(st.kind!=='pay'){zone.innerHTML='<div class="notice">'+esc(st.message)+'</div>';return;}
+  zone.innerHTML='<button class="btn btn-pay" id="btnPay" onclick="doPayEngine()">'+esc(st.button)+'</button>';
+  if(RETURNED==='cancelled') setMsg('info',t.payCancelled);
+}
+
+async function doPayEngine(){
+  const t=GnpEngine.text(ENGINE_LANG);
+  const btn=document.getElementById('btnPay'); if(btn) btn.disabled=true;
+  setMsg('info',t.redirecting);
+  try{
+    const j=await GnpEngine.postJson(GnpEngine.guestUrl(token,'/pay'),{});
+    const url=GnpEngine.checkoutUrl(j);
+    if(!url){setMsg('err',GnpEngine.errorText(j,'Error',ENGINE_LANG));if(btn)btn.disabled=false;return;}
+    window.location.href=url;
+  }catch(e){setMsg('err',String(e));if(btn)btn.disabled=false;}
+}
+
 function showLoadErr(msg){document.getElementById('loadCard').innerHTML='<p style="color:#A3274C;text-align:center;padding:10px 0;">'+esc(msg)+'</p>';}
 
 function render(d){
@@ -136,6 +184,7 @@ function render(d){
 }
 
 async function submitComprobante(input){
+  if(ENGINE) return; // engine mode takes Stripe only
   var file=input.files&&input.files[0]; input.value='';
   if(!file) return;
   if(file.size>7*1024*1024){setMsg('err','El archivo es muy grande (máx 7MB).');return;}
@@ -156,6 +205,7 @@ async function submitComprobante(input){
 }
 
 async function doPay(){
+  if(ENGINE) return doPayEngine();
   if(!PAY_DATA||PAY_DATA.mockEnabled!==true){setMsg('err','El pago en línea no está disponible. Te contactaremos para coordinar el pago.');return;}
   document.getElementById('btnPay').disabled=true;
   try{

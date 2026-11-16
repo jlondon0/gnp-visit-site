@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: calendar v2.28.2b · 2026-09-13 -->
+<!-- GNP-BUILD: calendar v2.29.0 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -131,7 +131,7 @@ a{color:inherit;}
 // (src/worker.js), not from Apps Script directly: the backend takes
 // seconds on a cold start and the page used to hang on it (SWL-KFMU).
 const API_BASE = '/api/calendar';
-const CAL_BUILD = 'v2.28.2b · 2026-09-13';
+const CAL_BUILD = 'v2.29.0 · 2026-11-16';
 // Give up on a month after this long and show the degraded notice with a
 // retry link, rather than leaving "Cargando..." on screen indefinitely.
 const FETCH_TIMEOUT_MS = 15000;
@@ -161,6 +161,7 @@ const I18N = {
     foot: '¿Preguntas?', loading: 'Cargando disponibilidad...',
     degraded: 'No pudimos cargar la disponibilidad en vivo. Puedes elegir una fecha y enviar tu solicitud igualmente.', retry: 'Reintentar',
     minDays: 'Requiere mínimo {n} días de antelación. Los días grises no están disponibles para reservar en línea.',
+    grayDays: 'Los días grises no están disponibles para reservar en línea.',
     weekdays: ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'],
     months: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre']
   },
@@ -171,6 +172,7 @@ const I18N = {
     foot: 'Questions?', loading: 'Loading availability...',
     degraded: 'We could not load live availability. You can still pick a date and send your request.', retry: 'Retry',
     minDays: 'Requires at least {n} days advance notice. Gray days cannot be booked online.',
+    grayDays: 'Gray days cannot be booked online.',
     weekdays: ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],
     months: ['January','February','March','April','May','June','July','August','September','October','November','December']
   }
@@ -269,7 +271,10 @@ async function renderMonth(){
 function paintMonth(data, degraded){
   const t = I18N[LANG];
   const firstOfMonth = new Date(viewYear, viewMonth, 1);
-  const minAdvance = data.minDaysAdvance != null ? data.minDaysAdvance : 7;
+  // The engine (Worker ENGINE_BASE) publishes no lead time: it offers no slot
+  // on the days too soon to book, which then paint as unavailable.
+  const engine = data.source === 'engine';
+  const minAdvance = data.minDaysAdvance != null ? data.minDaysAdvance : (engine ? 0 : 7);
   const minDate = new Date(today); minDate.setDate(minDate.getDate() + Number(minAdvance || 0));
 
   const startWeekday = firstOfMonth.getDay(); // 0=Sun
@@ -302,7 +307,7 @@ function paintMonth(data, degraded){
   }
   const notice = degraded ? '<div class="cal-degraded">' + t.degraded + ' <a href="#" onclick="renderMonth();return false;">' + t.retry + '</a></div>' : '';
   document.getElementById('calBody').innerHTML = notice + '<div class="grid">' + html + '</div>';
-  document.getElementById('dateHint').textContent = t.minDays.replace('{n}', minAdvance);
+  document.getElementById('dateHint').textContent = engine ? t.grayDays : t.minDays.replace('{n}', minAdvance);
 }
 
 function prefetchNeighbors(){

@@ -3,6 +3,63 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-11-16 - Backend switch: the pages can run on the sv7n engine (track/engine)
+- Change request: Guayacan moves from Apps Script to the sv7n engine (sv7n-core
+  0.6.0; scope in sv7n-core `docs/legacy/gnp-migration-plan.md`, "Scope decided
+  2026-11-16"). The engine host must come from configuration, and rollback must
+  be one step.
+- Switch: the Worker variable `ENGINE_BASE` (dashboard, Worker settings,
+  Variables; `wrangler.jsonc` now sets `keep_vars` so a deploy keeps it). Unset
+  or blank: every page calls Apps Script exactly as before. Set to an origin
+  (`https://qa.gnp.sv7n.app`): the pages call the engine. A set but unusable
+  value (not https, has a path) blocks in engine mode with
+  `engine_misconfigured`; it never falls back to Apps Script. Optional
+  `ENGINE_EVENT_TYPES` (JSON) maps AMANECER, TARDE, GUAYACAN24 to slugs other
+  than `pasadia-amanecer`, `pasadia-tarde`, `guayacan24`.
+- Worker (`src/engine.js`, `WORKER_BUILD` `calendar-cache v1.1.0 · 2026-11-16`):
+  `/config.js` tells the pages which backend to use; `/engine/api/...` forwards
+  the six guest routes the pages use to `ENGINE_BASE` and refuses every other
+  path (admin, manual payment, reschedule, holds, documents) with 404;
+  `/api/calendar` builds the month from the engine's availability (same answer
+  shape, cached the same way under a key of its own, so a switch or rollback
+  never serves the other backend's copy; Guayacan24 dates come back full);
+  `/guest/bookings/<token>` (Stripe return) and `/bookings/<token>` redirect to
+  pay and manage.
+- Pages (`public/engine-client.js` builds every engine request): index
+  `v2.33.0` (plans, sessions and prices from the engine's event types; the
+  waiver and the services approval go as consents `waiver` and `services_ack`
+  plus intake, with the typed name; the success view carries the pay and manage
+  links, since the engine emails none), calendar `v2.29.0` (the engine's lead
+  time instead of a fixed 7 days), manage `v2.29.0` (refund preview from the
+  engine, cancel pins it; pay link once an operator moved the request to
+  pending payment; no reschedule request), pay `v2.40.0` (Stripe Checkout only;
+  no transfer, Nequi, Bre-B, QR, receipt upload or mock), review `v2.29.0` and
+  admin `v2.39.1` (send the operator to the engine admin, bookings board),
+  listado `v1.1.0` and partner (bilingual "not available"). With `ENGINE_BASE`
+  unset none of this runs.
+- Tests: `tests/engine.test.mjs` (27) in the runner; mutation-tested (a bad
+  base falling back to Apps Script, an open proxy, a shared cache key, a
+  waiver not required, a non-Stripe checkout URL, a cancellable unknown refund,
+  the manual lane in engine mode, review calling Apps Script, a page without
+  `/config.js`, an absent session counted as open: each turns it red).
+  `tests/defects-v2.39.test.mjs`: the pay doPay sandbox names `ENGINE`, and
+  engine mode never reaches the mock; markers repointed to pay v2.40.0 and
+  admin v2.39.1 (`ADMIN_BUILD` stays the backend's v2.39.0).
+- Verified 2026-11-16 against https://qa.gnp.sv7n.app (engine 0.6.0, gnp-qa
+  seed) with the site served by `wrangler dev` and `ENGINE_BASE` set:
+  `tests/engine-live.mjs` read the calendar (lead time applied: first day
+  2026-11-23), the three plans (Pasadía 130.000 COP with Mañana and Tarde,
+  Guayacan 24 Horas 220.000 COP), then made one booking for a test customer
+  (`@example.test`, the engine's test-record rule), BK-2VTAFC, status
+  requested, deposit 65.000 COP, read it back, and cancelled it with the
+  refund it showed (nothing paid, 0). index.html's own script ran against the
+  same server: plans, session capacity and receipt rendered from the engine.
+- Found, not changed: `wrangler dev` 4.162 refuses `src/worker.js` on `main`
+  too ("Incorrect type for map entry 'FRESH_MS'"): the entry module exports
+  constants, which current workerd treats as entrypoints. Production runs
+  v1.0.1 from September; a deploy built by a current wrangler may be refused
+  the same way. Local runs used a wrapper entry outside the repo.
+
 ## 2026-11-13 - Pay and admin pages for backend v2.39.0: no mock payment, no secrets
 - Pay page (`pay` v2.39.0): whenever the manual lane was not offered the page
   showed "Pagar con tarjeta", which called `confirmPaymentMock` and confirmed the

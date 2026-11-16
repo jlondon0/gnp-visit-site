@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: admin v2.39.0 · 2026-11-13 -->
+<!-- GNP-BUILD: admin v2.39.1 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -218,7 +218,12 @@ tr:last-child td{border-bottom:none;}
   </div>
 </div>
 
+<script src="/config.js"></script>
+<script src="/engine-client.js"></script>
 <script>
+// Engine mode (Worker ENGINE_BASE): administration happens in the engine admin
+// (behind Cloudflare Access); this page sends the operator there and never asks
+// Apps Script for anything. ADMIN_BUILD stays the Apps Script backend version.
 const API = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
 const ADMIN_BUILD = 'v2.39.0 · 2026-11-13';
 console.log('[GNP] admin build ' + ADMIN_BUILD);
@@ -284,6 +289,7 @@ function showMsg(id, text, type) {
 
 let ROLE = '';
 async function login() {
+  if (window.GnpEngine && window.GnpEngine.enabled()) return; // engine mode: never Apps Script
   pwd = document.getElementById('pwd').value.trim();
   if (!pwd) return;
   try {
@@ -756,6 +762,9 @@ async function downloadRegistroPdf() {
     btn.disabled = false; btn.textContent = 'Descargar PDF';
   }
 }
+
+// Engine mode: hand over to the engine admin before any login is possible.
+if (window.GnpEngine) window.GnpEngine.takeOver('admin', document, window.location);
 </script>
 <div class="modal-overlay" id="cancelOverlay">
   <div class="modal">

@@ -47,7 +47,12 @@ button:disabled{opacity:.5;cursor:default}
   </div>
   <p class="foot">Guayacan Natural Preserve · RNT 273376</p>
 </div>
+<script src="/config.js"></script>
+<script src="/engine-client.js"></script>
 <script>
+// GNP-BUILD: partner v1.1.0 · 2026-11-16. Engine mode (Worker ENGINE_BASE): the
+// partners directory is deferred in the engine; the page says so in both
+// languages and never calls Apps Script.
 var API='https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
 var TOKEN=new URLSearchParams(location.search).get('t')||'';
 var EN=false;
@@ -92,7 +97,7 @@ document.getElementById('save').onclick=async function(){
   }catch(e){err.textContent=t().err;err.style.display='block';}
   btn.disabled=false;btn.textContent=t().save;
 };
-applyLang();load();
+if (!(window.GnpEngine && window.GnpEngine.takeOver('unavailable', document, window.location))) { applyLang(); load(); }
 </script>
 
 <a data-swl-report href="https://intake.sketchwithlight.com/?from=gnp-res" target="_blank" rel="noopener"

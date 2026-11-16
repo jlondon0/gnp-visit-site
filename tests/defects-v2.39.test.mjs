@@ -76,7 +76,9 @@ test('pay page: the mock button appears only when the backend says mockEnabled =
 test('pay page: doPay sends nothing unless the backend enabled the mock for this page load', async () => {
   const { els, document } = stubDom();
   const posted = [];
-  const ctx = { document, JSON, String, API: 'https://example.invalid', token: 't', PAY_DATA: null,
+  let engineCalls = 0;
+  const ctx = { document, JSON, String, API: 'https://example.invalid', token: 't', PAY_DATA: null, ENGINE: false,
+    doPayEngine: async () => { engineCalls++; },
     setMsg: (k, t) => { document.getElementById('msg').textContent = t; }, showDone() {},
     fetch: async (u, init) => { posted.push(init); return { json: async () => ({ ok: true }) }; } };
   vm.createContext(ctx);
@@ -87,10 +89,17 @@ test('pay page: doPay sends nothing unless the backend enabled the mock for this
   ctx.PAY_DATA = { mockEnabled: false };
   await ctx.doPay();
   assert.equal(posted.length, 0);
+  // Engine mode (track/engine): never the Apps Script mock, even when an old
+  // payload said mockEnabled; the Stripe path is taken instead.
+  ctx.ENGINE = true;
+  ctx.PAY_DATA = { mockEnabled: true };
+  await ctx.doPay();
+  assert.equal(posted.length, 0);
+  assert.equal(engineCalls, 1);
 });
 
-test('pay page carries the v2.39.0 build marker', () => {
-  assert.match(pay, /<!-- GNP-BUILD: pay v2\.39\.0 /);
+test('pay page carries a build marker at or after v2.39.0 (v2.40.0: engine mode)', () => {
+  assert.match(pay, /<!-- GNP-BUILD: pay v2\.40\.0 /);
 });
 
 // --- admin page ------------------------------------------------------------------
@@ -149,6 +158,7 @@ test('admin: a plain key still saves an empty value', async () => {
   assert.equal(posted.length, 1);
 });
 
-test('admin page carries the v2.39.0 build marker', () => {
-  assert.match(admin, /<!-- GNP-BUILD: admin v2\.39\.0 /);
+test('admin page carries the v2.39 build marker (v2.39.1: engine mode hands over to the engine admin)', () => {
+  assert.match(admin, /<!-- GNP-BUILD: admin v2\.39\.1 /);
+  assert.match(admin, /const ADMIN_BUILD = 'v2\.39\.0 /, 'ADMIN_BUILD stays aligned with the Apps Script backend version');
 });

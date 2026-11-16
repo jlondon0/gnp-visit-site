@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: index v2.32.0 · 2026-08-08 -->
+<!-- GNP-BUILD: index v2.33.0 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -372,6 +372,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
       <div class="eyebrow" id="t-okEyebrow" style="color:#1F5C3A;">Solicitud recibida</div>
       <div class="rid" id="successRid">26-000000</div>
       <p id="t-okBody">Te enviamos una copia de tu reserva y el desglose por correo y WhatsApp. Revisaremos disponibilidad y te compartiremos las instrucciones de pago.</p>
+      <div id="engineNext" class="hideit"></div>
     </div>
   </div>
 
@@ -391,11 +392,17 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   </div>
 </div>
 
+<script src="/config.js"></script>
+<script src="/engine-client.js"></script>
 <script>
 /* ============ CONFIG ============ */
+// Backend: Apps Script unless the Worker's /config.js switched this site to the
+// sv7n engine (ENGINE_BASE). In engine mode every call goes through
+// GnpEngine (engine-client.js) to /engine/api on this Worker.
 const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const INDEX_BUILD = 'v2.32.0 · 2026-08-08';
-console.log('[GNP] index build ' + INDEX_BUILD);
+const ENGINE = !!(window.GnpEngine && window.GnpEngine.enabled());
+const INDEX_BUILD = 'v2.33.0 · 2026-11-16';
+console.log('[GNP] index build ' + INDEX_BUILD + (ENGINE ? ' · engine' : ''));
 
 let LANG = ((navigator.language||'es').toLowerCase().indexOf('en')===0 ? 'EN' : 'ES');
 let CONFIG = null;
@@ -508,7 +515,7 @@ function setLang(L){
   document.getElementById('f_waiverName').placeholder = t.lblName;
   document.getElementById('natYes').textContent = t.natYes;
   document.getElementById('natNo').textContent = t.natNo;
-  document.getElementById('dateHint').textContent = CONFIG ? t.minDays.replace('{n}', CONFIG.minDaysAdvance) : '';
+  document.getElementById('dateHint').textContent = (CONFIG && CONFIG.minDaysAdvance != null) ? t.minDays.replace('{n}', CONFIG.minDaysAdvance) : '';
   renderPlans();
   renderSubOptions();
   renderInclusions();
@@ -518,12 +525,34 @@ function setLang(L){
 }
 
 /* ============ INIT ============ */
+function todayYmd_(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
+
+/* Engine mode: the plans come from the engine's event types (name, price,
+   currency ride on each availability answer). Lead time, deposit, add-ons,
+   residency tax and FX are not published by the engine, so they are absent
+   here, never defaulted. */
+async function loadEngineConfig(){
+  const answers = {};
+  await Promise.all(['AMANECER', 'TARDE', 'GUAYACAN24'].map(async k => {
+    const slug = GnpEngine.slugFor(k, null);
+    if (!slug) return;
+    try { answers[k] = await GnpEngine.getJson(GnpEngine.availabilityUrl(slug, todayYmd_())); } catch (e) { answers[k] = null; }
+  }));
+  const plans = GnpEngine.planCatalog(answers);
+  if (!plans.length) throw new Error('engine: no bookable plans');
+  return { engine: true, plans, residencyEnabled: false, minDaysAdvance: null, depositPct: null, exchangeRate: 0 };
+}
+
 async function loadConfig(){
   try {
+    if (ENGINE) {
+      CONFIG = await loadEngineConfig();
+    } else {
     const res = await fetch(API_BASE + '?action=config');
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'config error');
     CONFIG = json.data;
+    }
     RESIDENCY_ON = (CONFIG.residencyEnabled === true);
     if (!RESIDENCY_ON) {
       const nf = document.getElementById('natField');
@@ -543,6 +572,7 @@ async function loadConfig(){
     }
   } catch (err) {
     console.error('Config load failed', err);
+    if (ENGINE) showMsg(LANG === 'EN' ? 'Online booking is not available right now. Please message us on WhatsApp.' : 'Las reservas en línea no están disponibles en este momento. Escríbenos por WhatsApp.', 'err');
   }
 }
 
@@ -557,8 +587,9 @@ function renderPlans(){
     const div = document.createElement('div');
     div.className = 'jcard' + (selectedPlan === p.key ? ' selected' : '');
     const label = LANG === 'EN' ? p.labelEn : p.labelEs;
+    const priceTxt = ENGINE ? GnpEngine.formatMoney(p.priceMinor, p.currency) : (copFmt(p.priceCop)+' · '+usdFmt(cop2usd(p.priceCop)));
     div.innerHTML = '<div class="jname">'+label+'</div>' +
-      '<div class="jprice">'+copFmt(p.priceCop)+' · '+usdFmt(cop2usd(p.priceCop))+' '+I18N[LANG].perPerson+'</div>';
+      (priceTxt ? '<div class="jprice">'+priceTxt+' '+I18N[LANG].perPerson+'</div>' : '');
     div.onclick = () => selectPlan(p.key);
     box.appendChild(div);
   });
@@ -646,6 +677,8 @@ function renderInclusions(){
   const plan = planByKey(selectedPlan);
   const box = document.getElementById('inclBox');
   if (!plan) { box.classList.add('hideit'); return; }
+  // Engine mode: includes and excludes are not published before booking.
+  if (ENGINE && !((plan.incluyeEs || []).length || (plan.excluyeEs || []).length)) { box.classList.add('hideit'); return; }
   box.classList.remove('hideit');
   var inc = (LANG === 'EN' ? plan.incluyeEn : plan.incluyeEs) || [];
   var exc = (LANG === 'EN' ? plan.excluyeEn : plan.excluyeEs) || [];
@@ -679,6 +712,7 @@ async function checkAvailability(){
   const dateStr = document.getElementById('f_fecha').value;
   const plan = planByKey(selectedPlan);
   if (!dateStr || !CONFIG || !plan || !plan.subOptions || !plan.subOptions.length) return;
+  if (ENGINE) return checkAvailabilityEngine(dateStr, plan);
   let data = availabilityCache[dateStr];
   if (!data) {
     try {
@@ -699,6 +733,28 @@ async function checkAvailability(){
     else if (d.remaining <= 2) { el.textContent = d.remaining + ' ' + word; el.className = 'jcap low'; }
     else { el.textContent = d.remaining + ' ' + word; el.className = 'jcap ok'; }
   });
+}
+
+/* Engine mode: one availability answer per session and date, kept for the visit. */
+function engineAvailability(slug, dateStr, fresh){
+  const k = slug + '|' + dateStr;
+  if (fresh || !availabilityCache[k]) availabilityCache[k] = GnpEngine.getJson(GnpEngine.availabilityUrl(slug, dateStr)).catch(() => null);
+  return availabilityCache[k];
+}
+async function checkAvailabilityEngine(dateStr, plan){
+  const t = I18N[LANG];
+  for (const s of plan.subOptions) {
+    const ans = await engineAvailability(GnpEngine.slugFor(plan.key, s.key), dateStr);
+    const el = document.getElementById('cap_'+s.key);
+    if (!el) continue;
+    if (!ans || ans.ok !== true) { el.textContent = ''; el.className = 'jcap'; continue; }
+    const slot = GnpEngine.slotOn(ans, dateStr);
+    const remaining = slot ? slot.remaining : 0;
+    const word = (remaining === 1) ? t.spotOne : t.spotsLeft;
+    if (remaining <= 0) { el.textContent = t.full; el.className = 'jcap full'; }
+    else if (remaining <= 2) { el.textContent = remaining + ' ' + word; el.className = 'jcap low'; }
+    else { el.textContent = remaining + ' ' + word; el.className = 'jcap ok'; }
+  }
 }
 
 function onDateChange(){ checkAvailability(); }
@@ -788,7 +844,35 @@ function renderExtras(){
   var rf = document.getElementById('rntFoot'); if (rf) rf.textContent = CONFIG.companyRnt ? ((EN ? 'National Tourism Registry (RNT): ' : 'Registro Nacional de Turismo (RNT): ') + CONFIG.companyRnt) : '';
 }
 
+/* Engine mode: price x people in the event type's currency. The deposit is
+   computed by the engine when the request is sent and shown then. */
+function renderReceiptEngine(){
+  const t = I18N[LANG];
+  const pending = document.getElementById('receiptPending');
+  const content = document.getElementById('receiptContent');
+  const plan = planByKey(selectedPlan);
+  const r = plan ? GnpEngine.receipt(plan, guestCount) : null;
+  if (!r) {
+    pending.textContent = plan ? (LANG === 'EN' ? 'The price is confirmed when you send the request.' : 'El precio se confirma al enviar la solicitud.') : t.receiptPending;
+    pending.classList.remove('hideit');
+    content.classList.add('hideit');
+    return;
+  }
+  pending.classList.add('hideit');
+  content.classList.remove('hideit');
+  const row = (labelHtml, minor, cls) =>
+    '<div class="rline '+(cls||'')+'"><div class="rlabel">'+labelHtml+'</div>' +
+    '<div class="ramt"><span class="cop">'+GnpEngine.formatMoney(minor, r.currency)+'</span></div></div>';
+  let html = '<div class="rhead">'+t.lblReceipt+'</div>';
+  html += row((LANG === 'EN' ? plan.labelEn : plan.labelEs) + ' <small>× ' + r.people + '</small>', r.totalMinor);
+  html += '<hr class="rsep">';
+  html += row(t.rTotal, r.totalMinor, 'total');
+  html += '<div class="rnote">'+(LANG === 'EN' ? 'The deposit to reserve is shown when you send the request.' : 'El depósito para reservar se muestra al enviar la solicitud.')+'</div>';
+  content.innerHTML = html;
+}
+
 function renderReceipt(){
+  if (ENGINE) return renderReceiptEngine();
   const t = I18N[LANG];
   const pending = document.getElementById('receiptPending');
   const content = document.getElementById('receiptContent');
@@ -894,6 +978,8 @@ async function submitReservation(){
   btn.disabled = true;
   document.getElementById('t-submit').textContent = t.sending;
 
+  if (ENGINE) return submitEngine({ nombre, email, phone: wa, fecha, req, arrival: hasSub ? arrival : '', subOption: hasSub ? selectedSubOption : null, waiverSignedName }, btn);
+
   // jornada: sub-option key for Pasadía (matches availability keys); plan key otherwise.
   const jornada = hasSub ? selectedSubOption : selectedPlan;
   const almQty = (plan && plan.allowsAlmuerzo) ? almuerzoQty : 0;
@@ -936,6 +1022,54 @@ async function submitReservation(){
     showMsg(String(err.message || err), 'err');
     btn.disabled = false;
     document.getElementById('t-submit').textContent = t.submit;
+  }
+}
+
+/* Engine mode: a fresh slot for the date, then POST /api/bookings through the
+   Worker. The waiver and the services approval travel as consents and intake
+   (GnpEngine.bookingRequest). The guest link comes back only in this answer,
+   so the success view carries the pay and manage links. */
+async function submitEngine(f, btn){
+  const t = I18N[LANG];
+  const reset = () => { btn.disabled = false; document.getElementById('t-submit').textContent = t.submit; };
+  try {
+    const slug = GnpEngine.slugFor(selectedPlan, f.subOption);
+    const ans = slug ? await engineAvailability(slug, f.fecha, true) : null;
+    const slot = GnpEngine.slotOn(ans, f.fecha);
+    if (!slot || slot.remaining < guestCount) {
+      showMsg(GnpEngine.errorText({ error: slot ? 'sold_out' : 'slot_unavailable' }, 'Error', LANG), 'err');
+      checkAvailability();
+      return reset();
+    }
+    const body = GnpEngine.bookingRequest({
+      plan: selectedPlan, subOption: f.subOption, slot, people: guestCount, lang: LANG,
+      nombre: f.nombre, email: f.email, phone: f.phone, requerimientos: f.req, arrivalTime: f.arrival,
+      hasMinors, minorWith: (document.getElementById('f_minorWith') ? document.getElementById('f_minorWith').value : ''),
+      ackAccepted: true, ackText: I18N[LANG].ackText, waiverAccepted: true, waiverName: f.waiverSignedName,
+      waiverText: I18N[LANG].waiverText, page: 'index ' + INDEX_BUILD
+    });
+    const json = await GnpEngine.postJson(GnpEngine.bookingsUrl(), body);
+    const r = GnpEngine.bookingResult(json);
+    if (!r.ok) { showMsg(GnpEngine.errorText(json, 'Error', LANG), 'err'); return reset(); }
+    document.getElementById('formView').style.display = 'none';
+    document.getElementById('successView').classList.add('show');
+    document.getElementById('successRid').textContent = r.ref;
+    const EN = LANG === 'EN';
+    // The engine sends no "request received" email or WhatsApp, so the legacy
+    // text that promises one is replaced here.
+    document.getElementById('t-okBody').textContent = r.payNow
+      ? (EN ? 'We received your reservation request. Pay the deposit to confirm it.' : 'Recibimos tu solicitud de reserva. Paga el depósito para confirmarla.')
+      : (EN ? "We received your reservation request. We'll check availability and contact you." : 'Recibimos tu solicitud de reserva. Revisaremos disponibilidad y te contactaremos.');
+    const next = document.getElementById('engineNext');
+    next.innerHTML =
+      (r.payNow ? '<p>' + (EN ? 'Deposit to reserve: ' : 'Depósito para reservar: ') + '<strong>' + (r.depositText || '') + '</strong></p>' +
+        '<a class="submit" style="display:block;text-decoration:none;text-align:center;margin-top:12px" href="' + r.payUrl + '">' + (EN ? 'Pay deposit' : 'Pagar depósito') + '</a>' : '') +
+      '<p style="margin-top:12px"><a href="' + r.manageUrl + '">' + (EN ? 'View or cancel my reservation' : 'Ver o cancelar mi reserva') + '</a></p>' +
+      '<p class="hint">' + (EN ? 'Keep this link: it is how you manage your reservation.' : 'Guarda este enlace: con él administras tu reserva.') + '</p>';
+    next.classList.remove('hideit');
+  } catch (err) {
+    showMsg(err && err.code ? GnpEngine.errorText({ error: err.code, message: err.message }, 'Error', LANG) : String((err && err.message) || err), 'err');
+    reset();
   }
 }
 

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: manage v2.28.0 · 2026-08-01 -->
+<!-- GNP-BUILD: manage v2.29.0 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -51,6 +51,7 @@ input[type=date]{width:100%;border:1.5px solid #DDD6C4;border-radius:10px;paddin
     <div class="row"><span class="k">Personas</span><span class="v" id="personas"></span></div>
     <div class="row" style="border:none;"><span class="k">Pago</span><span class="v" id="pago"></span></div>
 
+    <a class="btn btn-cancel" id="payLink" href="#" style="display:none;text-align:center;text-decoration:none;"></a>
     <div class="notice" id="refundBox"></div>
 
     <div id="cancelZone">
@@ -76,12 +77,19 @@ input[type=date]{width:100%;border:1.5px solid #DDD6C4;border-radius:10px;paddin
   </div>
 </div>
 
+<script src="/config.js"></script>
+<script src="/engine-client.js"></script>
 <script>
 const API = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
+// Engine mode (Worker ENGINE_BASE): the booking comes from the engine's guest
+// link through /engine/api; cancel pins the refund preview the guest saw.
+const ENGINE = !!(window.GnpEngine && window.GnpEngine.enabled());
 const token = new URLSearchParams(window.location.search).get('token') || '';
+let VIEW = null; // the last engine guest view; doCancel reads its refund preview
 
 async function load() {
   if (!token) { showLoadErr('Token faltante.'); return; }
+  if (ENGINE) return loadEngine();
   try {
     const r = await fetch(API + '?action=manage&token=' + encodeURIComponent(token));
     const j = await r.json();
@@ -122,12 +130,86 @@ function render(d) {
   }
 }
 
+async function loadEngine() {
+  try {
+    const j = await GnpEngine.getJson(GnpEngine.guestUrl(token));
+    if (!j.ok) { showLoadErr(GnpEngine.errorText(j, 'No se pudo cargar.', 'ES')); return; }
+    renderEngine(j);
+  } catch(e) { showLoadErr(String(e)); }
+}
+
+function renderEngine(view) {
+  VIEW = view;
+  const s = GnpEngine.bookingSummary(view);
+  EN = s.lang === 'en';
+  if (EN) {
+    document.querySelector('.subtitle').textContent = 'My Reservation';
+    document.getElementById('btnCancel').textContent = 'Cancel reservation';
+  }
+  document.getElementById('loadCard').style.display = 'none';
+  document.getElementById('mainCard').style.display = 'block';
+  document.getElementById('resId').textContent = s.ref;
+  document.getElementById('metaLine').textContent = (EN ? 'Status: ' : 'Estado: ') + s.status + (EN ? ' | Paid: ' : ' | Pago: ') + (s.paid || '—');
+  document.getElementById('fecha').textContent = s.date;
+  document.getElementById('jornada').textContent = s.session;
+  document.getElementById('personas').textContent = s.people;
+  document.getElementById('pago').textContent = s.paid || '—';
+  // The engine emails no pay link: once an operator moves the request to
+  // pending payment, this page (the guest's one link) offers the pay step.
+  if (s.payable) {
+    const pl = document.getElementById('payLink');
+    pl.href = '/pay?token=' + encodeURIComponent(token);
+    pl.textContent = EN ? 'Pay deposit' : 'Pagar depósito';
+    pl.style.display = 'block';
+  }
+  // Reschedule requests are not offered by the engine yet (deferred feature).
+  document.getElementById('rescheduleZone').style.display = 'none';
+  document.querySelector('.divider').style.display = 'none';
+  const rb = document.getElementById('refundBox');
+  rb.textContent = GnpEngine.refundLine(view, s.lang);
+  let canCancel = view.can_cancel === true;
+  try { GnpEngine.cancelRequest(view); } catch (e) { canCancel = false; }
+  if (canCancel) {
+    rb.style.background = '#F6F2E8';
+    rb.style.color = '#15201A';
+  } else {
+    rb.style.background = '#FBE5EA';
+    rb.style.color = '#A3274C';
+    document.getElementById('cancelZone').style.display = 'none';
+  }
+}
+
+async function doCancelEngine() {
+  const msg = document.getElementById('cancelMsg');
+  const lang = EN ? 'EN' : 'ES';
+  let body;
+  try { body = GnpEngine.cancelRequest(VIEW); }
+  catch (e) { msg.className = 'msg show err'; msg.textContent = GnpEngine.refundLine(VIEW, lang); return; }
+  document.getElementById('btnCancel').disabled = true;
+  try {
+    const j = await GnpEngine.postJson(GnpEngine.guestUrl(token, '/cancel'), body);
+    if (j.ok) {
+      msg.className = 'msg show ok';
+      msg.textContent = GnpEngine.text(lang).cancelled(j.refund_minor > 0 ? GnpEngine.formatMoney(j.refund_minor, j.currency) : '');
+    } else {
+      msg.className = 'msg show err';
+      msg.textContent = GnpEngine.errorText(j, 'Error', lang);
+      document.getElementById('btnCancel').disabled = false;
+    }
+  } catch(e) {
+    msg.className = 'msg show err';
+    msg.textContent = String(e);
+    document.getElementById('btnCancel').disabled = false;
+  }
+}
+
 function showLoadErr(msg) {
   document.getElementById('loadCard').innerHTML = '<p style="color:#A3274C;text-align:center;padding:10px 0;">' + msg + '</p>';
 }
 
 async function doCancel() {
   if (!confirm(EN ? 'Confirm you want to cancel this reservation?' : 'Confirmas que deseas cancelar esta reserva?')) return;
+  if (ENGINE) return doCancelEngine();
   document.getElementById('btnCancel').disabled = true;
   const msg = document.getElementById('cancelMsg');
   try {

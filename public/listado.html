@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: listado v1.0.0 · 2026-08-10 -->
+<!-- GNP-BUILD: listado v1.1.0 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="utf-8">
@@ -122,9 +122,13 @@ input:focus,select:focus{outline:2px solid rgba(31,59,46,.35);outline-offset:1px
   </div>
 </div>
 
+<script src="/config.js"></script>
+<script src="/engine-client.js"></script>
 <script>
+// Engine mode (Worker ENGINE_BASE): the insurance list is a deferred feature in
+// the engine; the page says so in both languages and never calls Apps Script.
 const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
-const LISTADO_BUILD = 'v1.0.0 · 2026-08-10';
+const LISTADO_BUILD = 'v1.1.0 · 2026-11-16';
 const TOKEN = new URLSearchParams(location.search).get('token') || '';
 
 /* Wording per document type. The instruction is the whole point: nobody should have to
@@ -411,7 +415,7 @@ el('sendBtn').addEventListener('click', async () => {
 });
 
 /* ── init ───────────────────────────────────────────────────────────── */
-(async function init(){
+if (!(window.GnpEngine && window.GnpEngine.takeOver('unavailable', document, window.location))) (async function init(){
   if (!TOKEN) { el('cards').innerHTML = '<div class="center">Falta el enlace de tu reserva.</div>'; return; }
   try {
     const out = await api({ action:'listado', token: TOKEN });

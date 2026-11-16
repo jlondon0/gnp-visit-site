@@ -79,6 +79,60 @@ The first call after a deploy reports `x-gnp-cache: miss` and takes as long as
 Apps Script does; the second reports `hit` in well under a second. The build
 marker must match `public/calendar.html`.
 
+## Backend switch: Apps Script or the sv7n engine
+
+One Worker variable decides it: `ENGINE_BASE`, set in the Cloudflare dashboard
+(Workers and Pages, `gnp-visit-site`, Settings, Variables and Secrets, type
+Text). `wrangler.jsonc` carries `keep_vars: true`, so a deploy from a push
+keeps whatever is set there. Nothing else names the engine host.
+
+| `ENGINE_BASE` | Pages call | `/api/calendar` reads |
+|---|---|---|
+| unset or blank | Apps Script, exactly as before | Apps Script (`UPSTREAM`) |
+| `https://qa.gnp.sv7n.app` (an origin) | the engine, through `/engine/api` on this Worker | the engine's availability |
+| set but not an https origin | nothing: pages show "not available", `/engine/api` and `/api/calendar` answer 503 `engine_misconfigured` | nothing |
+
+`ENGINE_EVENT_TYPES` (optional, JSON) maps the page's plan keys to engine
+slugs when they differ from `{"AMANECER":"pasadia-amanecer","TARDE":"pasadia-tarde","GUAYACAN24":"guayacan24"}`.
+
+What changes in engine mode: `/config.js` tells every page to use the engine;
+index, calendar, manage and pay call the engine's guest routes (only those
+six are forwarded); pay offers Stripe Checkout only; review and admin send the
+operator to `<ENGINE_BASE>/admin/bookings` (Cloudflare Access); listado and
+partner say the feature is not available. `/guest/bookings/<token>` (the
+Stripe return) and `/bookings/<token>` redirect to pay and manage, which only
+helps once the engine's `site.base_url` is this site (in QA it is the engine
+host; see the gaps in CHANGELOG.md, 2026-11-16).
+
+Switch: set the variable, then verify. UNVERIFIED as a dashboard step (not
+run from here; the NAS holds a Cloudflare token, but this change was made on a
+branch only):
+
+```bash
+curl -sS https://visit.guayacanpreserve.com/config.js          # window.GNP_ENGINE = {"enabled":true,...}
+ENGINE_SITE=https://visit.guayacanpreserve.com node tests/engine-live.mjs   # read-only
+```
+
+Rollback: delete `ENGINE_BASE` (or set it blank). It takes effect at once on
+the Worker; `/config.js` is cached for 60 s, so browsers are back on Apps
+Script within a minute. What a rollback does not revert: bookings, payments
+and cancellations made in the engine stay in the engine and are not in the
+Sheet. The calendar copies are keyed per backend, so no stale month from the
+other backend is served.
+
+Local run in engine mode, from the NAS. `wrangler dev` refuses `src/worker.js`
+as the entry because it exports constants (CHANGELOG.md, 2026-11-16), so it
+runs through a wrapper outside the repo:
+
+```bash
+mkdir -p /tmp/gnpdev && cd /tmp/gnpdev
+printf "import w from '/volume1/Projects/gnp-visit-site/src/worker.js';\nexport default w;\n" > entry.js
+printf '{ "name": "gnp-visit-site-dev", "main": "./entry.js", "compatibility_date": "2026-08-01", "assets": { "directory": "/volume1/Projects/gnp-visit-site/public/", "binding": "ASSETS" } }\n' > wrangler.jsonc
+/volume1/Projects/sv7n-core/node_modules/.bin/wrangler dev --port 8799 --ip 127.0.0.1 --var ENGINE_BASE:https://qa.gnp.sv7n.app
+# another shell:
+ENGINE_SITE=http://127.0.0.1:8799 node /volume1/Projects/gnp-visit-site/tests/engine-live.mjs --book
+```
+
 ## Rolling back
 
 Record the rollback here the first time you need it, including what it does

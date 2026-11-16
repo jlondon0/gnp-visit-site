@@ -90,6 +90,14 @@ if command -v node >/dev/null 2>&1; then
   if [ $? -eq 0 ] && printf '%s\n' "$DF_OUT" | grep -q '^# fail 0$'; then ok; else
     bad "tests/defects-v2.39.test.mjs is red:"; printf '%s\n' "$DF_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
   fi
+  # Backend switch (track/engine): ENGINE_BASE unset keeps every page on Apps
+  # Script; set, the pages call the sv7n engine through this Worker. The
+  # request shapes the pages send, the forwarded routes, the engine calendar
+  # and the operator/deferred page hand-over.
+  EN_OUT=$(node --test tests/engine.test.mjs 2>&1)
+  if [ $? -eq 0 ] && printf '%s\n' "$EN_OUT" | grep -q '^# fail 0$'; then ok; else
+    bad "tests/engine.test.mjs is red:"; printf '%s\n' "$EN_OUT" | grep -E '^not ok|error:' | head -8 | sed 's/^/    /'
+  fi
 else
   bad "node is not on PATH; the Worker contract cannot be checked here"
 fi

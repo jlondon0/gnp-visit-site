@@ -6,6 +6,12 @@
     "directory": "./public/",
     "binding": "ASSETS"
   },
+  // ENGINE_BASE (and the optional ENGINE_EVENT_TYPES) are set in the
+  // dashboard (Worker, Settings, Variables and Secrets), not here: with
+  // keep_vars a deploy keeps them, so switching to the sv7n engine and rolling
+  // back are a variable change, no commit. ENGINE_BASE unset = Apps Script.
+  // See DEPLOY.md.
+  "keep_vars": true,
   "observability": {
     "enabled": true
   }
