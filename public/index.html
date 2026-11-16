@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- GNP-BUILD: index v2.33.0 · 2026-11-16 -->
+<!-- GNP-BUILD: index v2.34.0 · 2026-11-16 -->
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -327,6 +327,15 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           </div>
         </div>
 
+        <div class="inclbox hideit" id="planInfoBox">
+          <div id="planInfo"></div>
+        </div>
+
+        <div class="inclbox hideit" id="policyBox">
+          <h4 id="policyHead"></h4>
+          <ul id="policyList"></ul>
+        </div>
+
         <div class="field">
           <label id="t-lblReq">Requerimientos especiales</label>
           <textarea id="f_req" placeholder=""></textarea>
@@ -352,6 +361,10 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
           <label style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;text-transform:none;font-size:.84rem;font-weight:400;color:var(--ink);">
             <input type="checkbox" id="f_waiver" class="waiver-checkbox">
             <span id="t-waiverText">Entiendo que el avistamiento de aves implica caminar por senderos naturales y acepto los riesgos asociados. Eximo a Guayacan Preserve de responsabilidad por lesiones derivadas de mi participación.</span>
+          </label>
+          <label id="attestField" class="hideit" style="display:flex;align-items:flex-start;gap:10px;cursor:pointer;text-transform:none;font-size:.84rem;font-weight:400;color:var(--ink);margin-top:10px;">
+            <input type="checkbox" id="f_attestAdult" class="waiver-checkbox">
+            <span id="attestText"></span>
           </label>
           <input type="text" id="f_waiverName" placeholder="" autocomplete="name" style="margin-top:10px;">
           <div class="hint" id="t-waiverHint">Escribe tu nombre completo como firma.</div>
@@ -389,6 +402,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
   </div>
   <div style="text-align:center;margin-top:16px;">
     <span id="rntFoot" style="display:inline-block;font-size:.86rem;font-weight:600;color:var(--gold);border:1px solid rgba(201,162,39,.45);border-radius:999px;padding:6px 16px;letter-spacing:.02em;"></span>
+    <div id="legalFoot" style="font-size:.74rem;color:rgba(251,246,236,.6);margin-top:8px;"></div>
   </div>
 </div>
 
@@ -401,7 +415,7 @@ select{-webkit-appearance:none;appearance:none;background-image:url("data:image/
 // GnpEngine (engine-client.js) to /engine/api on this Worker.
 const API_BASE = 'https://script.google.com/macros/s/AKfycbx4OJcB72Mqp3RiLB2iZdFv1j_Gt9NBPU6EgKbWnTVCWkdsKB6AXuVQR7a36iGHDEHC/exec';
 const ENGINE = !!(window.GnpEngine && window.GnpEngine.enabled());
-const INDEX_BUILD = 'v2.33.0 · 2026-11-16';
+const INDEX_BUILD = 'v2.34.0 · 2026-11-16';
 console.log('[GNP] index build ' + INDEX_BUILD + (ENGINE ? ' · engine' : ''));
 
 let LANG = ((navigator.language||'es').toLowerCase().indexOf('en')===0 ? 'EN' : 'ES');
@@ -522,26 +536,76 @@ function setLang(L){
   renderAlmuerzoHint();
   renderExtras();
   renderReceipt();
+  renderEngineTexts();
 }
 
 /* ============ INIT ============ */
 function todayYmd_(){ const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); }
 
-/* Engine mode: the plans come from the engine's event types (name, price,
-   currency ride on each availability answer). Lead time, deposit, add-ons,
-   residency tax and FX are not published by the engine, so they are absent
-   here, never defaulted. */
+/* Engine mode: everything the form shows before booking comes from the
+   engine's public catalogue (GET /api/catalogue through the Worker): plans,
+   prices, includes and excludes, session times and arrival instructions, the
+   deposit, the cancellation policy, the waiver text with its version and
+   SHA-256, the almost-full threshold, the lead time and the RNT and legal
+   line. Add-ons, residency tax and FX are not published by the engine, so
+   they are absent here, never defaulted. */
 async function loadEngineConfig(){
-  const answers = {};
-  await Promise.all(['AMANECER', 'TARDE', 'GUAYACAN24'].map(async k => {
-    const slug = GnpEngine.slugFor(k, null);
-    if (!slug) return;
-    try { answers[k] = await GnpEngine.getJson(GnpEngine.availabilityUrl(slug, todayYmd_())); } catch (e) { answers[k] = null; }
-  }));
-  const plans = GnpEngine.planCatalog(answers);
-  if (!plans.length) throw new Error('engine: no bookable plans');
-  return { engine: true, plans, residencyEnabled: false, minDaysAdvance: null, depositPct: null, exchangeRate: 0 };
+  const cat = await GnpEngine.getJson(GnpEngine.catalogueUrl(), { cache: 'no-store' });
+  const cfg = GnpEngine.catalogueConfig(cat);
+  if (!cfg || !cfg.plans.length) throw new Error('engine: no bookable plans');
+  cfg.residencyEnabled = false; cfg.depositPct = null; cfg.exchangeRate = 0;
+  return cfg;
 }
+
+/* The waiver the form shows and signs, in the page language, from the
+   catalogue; null when the engine has none in this language (submit blocks). */
+function engineWaiver(){
+  return (CONFIG && CONFIG.documents) ? GnpEngine.documentFor(CONFIG.documents.waiver, LANG) : null;
+}
+
+/* Engine mode: the texts that come from the catalogue rather than I18N. */
+function renderEngineTexts(){
+  if (!ENGINE || !CONFIG || !CONFIG.engine) return;
+  const EN = LANG === 'EN';
+  const w = engineWaiver();
+  const wt = document.getElementById('t-waiverText');
+  if (wt) wt.textContent = w ? w.body : (EN ? 'The waiver text could not be loaded. Please reload the page.' : 'No pudimos cargar el texto de la exoneración. Recarga la página.');
+  const af = document.getElementById('attestField');
+  if (af) {
+    af.classList.toggle('hideit', !(w && w.adult_only));
+    document.getElementById('attestText').textContent = w && w.adult_only ? (w.attestation_text || '') : '';
+    if (!(w && w.adult_only)) document.getElementById('f_attestAdult').checked = false;
+  }
+  const legal = GnpEngine.legalLines(CONFIG.site, LANG);
+  const rf = document.getElementById('rntFoot'); if (rf) { rf.textContent = legal.rnt; rf.style.display = legal.rnt ? '' : 'none'; }
+  const lf = document.getElementById('legalFoot'); if (lf) lf.textContent = legal.legal;
+  renderPlanInfo();
+}
+
+/* Engine mode: session time and arrival instructions of the plan (or of the
+   chosen session), the deposit and the cancellation policy. */
+function renderPlanInfo(){
+  const box = document.getElementById('planInfoBox'), pbox = document.getElementById('policyBox');
+  if (!ENGINE || !CONFIG || !CONFIG.engine) return;
+  const plan = planByKey(selectedPlan);
+  if (!plan) { box.classList.add('hideit'); pbox.classList.add('hideit'); return; }
+  const EN = LANG === 'EN';
+  const sub = (plan.subOptions || []).filter(x => x.key === selectedSubOption)[0] || null;
+  const src = sub || plan;
+  const when = EN ? src.sessionEn : src.sessionEs;
+  const how = EN ? src.instructionsEn : src.instructionsEs;
+  const lines = [];
+  if (when) lines.push('<li class="inc">' + (EN ? 'Schedule: ' : 'Horario: ') + escHtml(when) + '</li>');
+  if (how) lines.push('<li class="inc">' + escHtml(how) + '</li>');
+  if (typeof plan.depositPct === 'number') lines.push('<li class="inc">' + (EN ? 'To reserve you pay a deposit of ' + plan.depositPct + '% of the total.' : 'Para reservar pagas un depósito del ' + plan.depositPct + '% del total.') + '</li>');
+  document.getElementById('planInfo').innerHTML = lines.length ? '<ul>' + lines.join('') + '</ul>' : '';
+  box.classList.toggle('hideit', !lines.length);
+  const pol = GnpEngine.policyLines(plan.cancellation, LANG);
+  document.getElementById('policyHead').textContent = EN ? 'Cancellation policy' : 'Política de cancelación';
+  document.getElementById('policyList').innerHTML = pol.map(x => '<li>' + escHtml(x) + '</li>').join('');
+  pbox.classList.toggle('hideit', !pol.length);
+}
+function escHtml(x){ return String(x == null ? '' : x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 async function loadConfig(){
   try {
@@ -653,6 +717,7 @@ function selectPlan(key){
   renderAlmuerzoHint();
   checkAvailability();
   renderReceipt();
+  renderPlanInfo();
 }
 
 function renderSubOptions(){
@@ -664,10 +729,12 @@ function renderSubOptions(){
     const div = document.createElement('div');
     div.className = 'jcard' + (selectedSubOption === s.key ? ' selected' : '');
     const label = LANG === 'EN' ? s.labelEn : s.labelEs;
+    const sess = ENGINE ? (LANG === 'EN' ? s.sessionEn : s.sessionEs) : '';
     div.innerHTML = '<div class="jname">'+label+'</div>' +
       (s.arrivalWindow ? '<div class="jwin">'+(LANG==='EN'?'Arrival':'Llegada')+' '+s.arrivalWindow+'</div>' : '') +
+      (sess ? '<div class="jwin">'+escHtml(sess)+'</div>' : '') +
       '<div class="jcap" id="cap_'+s.key+'"></div>';
-    div.onclick = () => { selectedSubOption = s.key; renderSubOptions(); applyArrivalWindow_(); checkAvailability(); };
+    div.onclick = () => { selectedSubOption = s.key; renderSubOptions(); applyArrivalWindow_(); checkAvailability(); renderPlanInfo(); };
     box.appendChild(div);
   });
   checkAvailability();
@@ -751,9 +818,10 @@ async function checkAvailabilityEngine(dateStr, plan){
     const slot = GnpEngine.slotOn(ans, dateStr);
     const remaining = slot ? slot.remaining : 0;
     const word = (remaining === 1) ? t.spotOne : t.spotsLeft;
-    if (remaining <= 0) { el.textContent = t.full; el.className = 'jcap full'; }
-    else if (remaining <= 2) { el.textContent = remaining + ' ' + word; el.className = 'jcap low'; }
-    else { el.textContent = remaining + ' ' + word; el.className = 'jcap ok'; }
+    // "Almost full" is the engine's booking.low_availability_threshold.
+    const state = GnpEngine.capacityState(remaining, CONFIG.lowThreshold);
+    el.textContent = state === 'full' ? t.full : remaining + ' ' + word;
+    el.className = 'jcap ' + state;
   }
 }
 
@@ -867,7 +935,10 @@ function renderReceiptEngine(){
   html += row((LANG === 'EN' ? plan.labelEn : plan.labelEs) + ' <small>× ' + r.people + '</small>', r.totalMinor);
   html += '<hr class="rsep">';
   html += row(t.rTotal, r.totalMinor, 'total');
-  html += '<div class="rnote">'+(LANG === 'EN' ? 'The deposit to reserve is shown when you send the request.' : 'El depósito para reservar se muestra al enviar la solicitud.')+'</div>';
+  const dp = plan.depositPct;
+  html += '<div class="rnote">'+(typeof dp === 'number'
+    ? (LANG === 'EN' ? 'Deposit to reserve: ' + dp + '% of the total; the exact amount is confirmed when you send the request.' : 'Depósito para reservar: ' + dp + '% del total; el valor exacto se confirma al enviar la solicitud.')
+    : (LANG === 'EN' ? 'The deposit to reserve is shown when you send the request.' : 'El depósito para reservar se muestra al enviar la solicitud.'))+'</div>';
   content.innerHTML = html;
 }
 
@@ -1046,10 +1117,12 @@ async function submitEngine(f, btn){
       nombre: f.nombre, email: f.email, phone: f.phone, requerimientos: f.req, arrivalTime: f.arrival,
       hasMinors, minorWith: (document.getElementById('f_minorWith') ? document.getElementById('f_minorWith').value : ''),
       ackAccepted: true, ackText: I18N[LANG].ackText, waiverAccepted: true, waiverName: f.waiverSignedName,
-      waiverText: I18N[LANG].waiverText, page: 'index ' + INDEX_BUILD
+      document: engineWaiver(), attestAdult: document.getElementById('f_attestAdult').checked,
+      page: 'index ' + INDEX_BUILD
     });
     const json = await GnpEngine.postJson(GnpEngine.bookingsUrl(), body);
     const r = GnpEngine.bookingResult(json);
+    if (!r.ok && json && json.error === 'document_changed') return reloadWaiver(json, reset);
     if (!r.ok) { showMsg(GnpEngine.errorText(json, 'Error', LANG), 'err'); return reset(); }
     document.getElementById('formView').style.display = 'none';
     document.getElementById('successView').classList.add('show');
@@ -1071,6 +1144,24 @@ async function submitEngine(f, btn){
     showMsg(err && err.code ? GnpEngine.errorText({ error: err.code, message: err.message }, 'Error', LANG) : String((err && err.message) || err), 'err');
     reset();
   }
+}
+
+/* 409 document_changed: the waiver changed after the page loaded. Load the
+   catalogue again, show the new text, clear the acceptance so the guest reads
+   and accepts it again; the plan, date and form stay as they are. */
+async function reloadWaiver(json, reset){
+  try {
+    const fresh = await loadEngineConfig();
+    CONFIG.documents = fresh.documents;
+    CONFIG.plans.forEach(p => { const q = fresh.plans.filter(x => x.key === p.key)[0]; if (q) { p.cancellation = q.cancellation; p.depositPct = q.depositPct; } });
+  } catch (e) { console.error('catalogue reload failed', e); CONFIG.documents = null; }
+  document.getElementById('f_waiver').checked = false;
+  document.getElementById('f_attestAdult').checked = false;
+  renderEngineTexts();
+  showMsg(GnpEngine.errorText(json, 'Error', LANG), 'err');
+  const wf = document.getElementById('waiverField');
+  if (wf) { wf.classList.add('group-invalid'); wf.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  reset();
 }
 
 loadConfig();

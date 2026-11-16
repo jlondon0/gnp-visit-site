@@ -106,10 +106,19 @@ fi
 #     expressions; the first run on main read an empty upstream URL because the
 #     declaration wraps over two lines. The runner exercises the same
 #     expressions so a reformat is caught here, not on the runner.
-[ -n "$(grep -oE 'https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec' src/worker.js | head -1)" ] && ok || bad "live-check.yml cannot read UPSTREAM from src/worker.js"
-[ -n "$(sed -n "s/^export const WORKER_BUILD = '\([^']*\)';/\1/p" src/worker.js)" ] && ok || bad "live-check.yml cannot read WORKER_BUILD from src/worker.js"
+[ -n "$(grep -oE 'https://script\.google\.com/macros/s/[A-Za-z0-9_-]+/exec' src/calendar.js | head -1)" ] && ok || bad "live-check.yml cannot read UPSTREAM from src/calendar.js"
+[ -n "$(sed -n "s/^export const WORKER_BUILD = '\([^']*\)';/\1/p" src/calendar.js)" ] && ok || bad "live-check.yml cannot read WORKER_BUILD from src/calendar.js"
 [ -n "$(sed -n 's/.*<!-- GNP-BUILD: calendar \(.*\) -->.*/\1/p' public/calendar.html)" ] && ok || bad "live-check.yml cannot read the calendar build marker"
-grep -q 'grep -oE "https://script\\.google\\.com/macros/s/\[A-Za-z0-9_-\]+/exec" src/worker.js' .github/workflows/live-check.yml && ok || bad "live-check.yml no longer uses the UPSTREAM expression the runner checks"
+grep -q 'grep -oE "https://script\\.google\\.com/macros/s/\[A-Za-z0-9_-\]+/exec" src/calendar.js' .github/workflows/live-check.yml && ok || bad "live-check.yml no longer uses the UPSTREAM expression the runner checks"
+
+# 6c. The Worker entry exports the fetch handler and nothing else. Current
+#     workerd treats every named export of the entry module as an entrypoint
+#     and refuses a plain value ("Incorrect type for map entry 'FRESH_MS'"):
+#     wrangler dev stops, and a deploy built by a current wrangler can too.
+if command -v node >/dev/null 2>&1; then
+  EXPORTS=$(node --input-type=module -e "import('./src/worker.js').then((m) => console.log(Object.keys(m).sort().join(',')))" 2>&1)
+  [ "$EXPORTS" = "default" ] && ok || bad "src/worker.js must export only the default handler; it exports: $EXPORTS"
+fi
 
 # 7. The deploy config must be one wrangler accepts. A dry run needs no
 #    Cloudflare access. Only run where a wrangler binary is present (the

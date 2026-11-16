@@ -10,11 +10,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import vm from 'node:vm';
 import worker from '../src/worker.js';
 import { engineConfig, engineMonth, DEFAULT_EVENT_TYPES } from '../src/engine.js';
 
 const QA = 'https://qa.gnp.sv7n.app';
+// GET /api/catalogue recorded from QA on 2026-11-16 (engine 0.7.0, gnp-qa
+// seed); sessions trimmed to two weekdays, legal name shortened.
+const CAT = JSON.parse(readFileSync(new URL('./fixtures/catalogue-qa.json', import.meta.url), 'utf8'));
 const TOKEN = 'gT0k3n_abcdefghijklmnopqrstuvwxyz012345';
 const read = (f) => readFileSync(new URL('../public/' + f, import.meta.url), 'utf8');
 
@@ -134,6 +138,9 @@ test('the guest routes the pages use are forwarded to ENGINE_BASE, method, query
     ['POST', '/api/guest/bookings/' + TOKEN + '/cancel', '{"expected_refund_minor":0}'],
     ['GET', '/api/guest/bookings/' + TOKEN + '/payment-options'],
     ['POST', '/api/guest/bookings/' + TOKEN + '/pay', '{}'],
+    ['GET', '/api/catalogue'],
+    ['GET', '/api/documents/' + TOKEN],
+    ['POST', '/api/documents/' + TOKEN + '/sign', '{"signer_name":"Ana","accept":true}'],
   ];
   for (const [method, path, body] of cases) {
     const h = run({ ENGINE_BASE: QA }, () => new Response('{"ok":true,"x":1}', { status: 201, headers: { 'content-type': 'application/json' } }));
@@ -157,6 +164,8 @@ test('nothing else reaches the engine through this site: admin, manual payment, 
     ['POST', '/api/holds'], ['GET', '/api/documents/abc'], ['DELETE', '/api/guest/bookings/' + TOKEN],
     ['GET', '/api/guest/bookings/short'], ['GET', '/api/guest/bookings/' + TOKEN + '/../../admin/bookings'],
     ['POST', '/api/availability'], ['GET', '/admin/bookings'],
+    ['POST', '/api/catalogue'], ['GET', '/api/documents/copy/' + TOKEN], ['GET', '/api/documents/' + TOKEN + '/sign'],
+    ['POST', '/api/documents/' + TOKEN], ['GET', '/api/admin/documents/doc_1/sealed'],
   ];
   for (const [method, path] of refused) {
     const h = run({ ENGINE_BASE: QA });
@@ -188,10 +197,11 @@ test('the engine\'s guest links land on pay and manage; with the engine off they
 
 // ---------------------------------------------------------- the calendar --
 
-function engineAnswer(byslug) {
+function engineAnswer(byslug, catalogue) {
   return (url) => {
     const u = new URL(url);
     assert.equal(u.origin, QA, 'calendar asks the engine, never Apps Script');
+    if (u.pathname === '/api/catalogue') return new Response(JSON.stringify(catalogue === undefined ? CAT : catalogue), { status: catalogue === null ? 500 : 200 });
     assert.equal(u.pathname, '/api/availability');
     const slug = u.searchParams.get('event_type');
     if (!(slug in byslug)) return new Response(JSON.stringify({ ok: false, error: 'not_found' }), { status: 404 });
@@ -208,12 +218,15 @@ test('calendar in engine mode: a month from the engine in the shape calendar.htm
   const res = await h.go('/api/calendar?month=2026-12');
   assert.equal(res.status, 200);
   const j = await res.json();
-  assert.equal(h.calls.length, 2);
-  for (const c of h.calls) {
+  const avail = h.calls.filter((c) => new URL(c.url).pathname === '/api/availability');
+  assert.equal(avail.length, 2);
+  assert.equal(h.calls.length, 3, 'two sessions and the catalogue');
+  for (const c of avail) {
     assert.match(c.url, /from=2026-12-01&to=2026-12-31$/);
     assert.doesNotMatch(c.url, /script\.google\.com/);
   }
-  assert.deepEqual(h.calls.map((c) => new URL(c.url).searchParams.get('event_type')).sort(), ['pasadia-amanecer', 'pasadia-tarde']);
+  assert.deepEqual(avail.map((c) => new URL(c.url).searchParams.get('event_type')).sort(), ['pasadia-amanecer', 'pasadia-tarde']);
+  assert.equal(j.data.limitedThreshold, 2, 'the engine\'s low_availability_threshold');
   assert.equal(j.ok, true);
   assert.equal(j.data.source, 'engine');
   assert.equal(j.data.minDaysAdvance, null);
@@ -234,8 +247,23 @@ test('calendar in engine mode: an engine error is never cached, and an Apps Scri
   assert.equal(caches.default.store.size, 1, 'only the old legacy copy; the failure stored nothing');
 });
 
+test('calendar "almost full" is the engine\'s low_availability_threshold; a catalogue without it blocks the month', async () => {
+  const days = { 'pasadia-amanecer': [slot('2026-12-01', '07:00', 3)], 'pasadia-tarde': [slot('2026-12-01', '15:00', 8)] };
+  const three = JSON.parse(JSON.stringify(CAT)); three.booking.low_availability_threshold = 3;
+  let j = JSON.parse(await engineMonth('2026-12', QA, DEFAULT_EVENT_TYPES, async (u) => engineAnswer(days, three)(u)));
+  assert.equal(j.data.days['2026-12-01'].status, 'limited');
+  assert.equal(j.data.limitedThreshold, 3);
+  j = JSON.parse(await engineMonth('2026-12', QA, DEFAULT_EVENT_TYPES, async (u) => engineAnswer(days)(u)));
+  assert.equal(j.data.days['2026-12-01'].status, 'open', 'threshold 2: three left is open');
+  const none = JSON.parse(JSON.stringify(CAT)); delete none.booking.low_availability_threshold;
+  await assert.rejects(engineMonth('2026-12', QA, DEFAULT_EVENT_TYPES, async (u) => engineAnswer(days, none)(u)), /low_availability_threshold/);
+  const h = run({ ENGINE_BASE: QA }, engineAnswer(days, null));
+  assert.equal((await h.go('/api/calendar?month=2026-12')).status, 502, 'catalogue down: no month, nothing cached');
+  assert.equal(caches.default.store.size, 0);
+});
+
 test('engineMonth reads the recorded QA answers', async () => {
-  const text = await engineMonth('2026-12', QA, DEFAULT_EVENT_TYPES, async (url) => new Response(JSON.stringify(REC[new URL(url).searchParams.get('event_type')])));
+  const text = await engineMonth('2026-12', QA, DEFAULT_EVENT_TYPES, async (url) => new URL(url).pathname === '/api/catalogue' ? new Response(JSON.stringify(CAT)) : new Response(JSON.stringify(REC[new URL(url).searchParams.get('event_type')])));
   const j = JSON.parse(text);
   assert.deepEqual(j.data.days['2026-12-01'], { status: 'open', remaining: { AMANECER: 8, TARDE: 8 } });
 });
@@ -283,8 +311,10 @@ const FORM = {
   plan: 'PASADIA', subOption: 'TARDE', slot: REC['pasadia-tarde'].slots[1], people: 3, lang: 'EN',
   nombre: '  Ana  Maria Lopez ', email: 'ana@example.test', phone: '+573001234567', requerimientos: 'vegetarian',
   arrivalTime: '15:15', hasMinors: true, minorWith: 'Ana', ackAccepted: true, ackText: 'I have read...',
-  waiverAccepted: true, waiverName: 'Ana Maria Lopez', waiverText: 'I understand birdwatching...', now: '2026-11-16T12:00:00Z', page: 'index v2.33.0',
+  waiverAccepted: true, waiverName: 'Ana Maria Lopez', now: '2026-11-16T12:00:00Z', page: 'index v2.34.0',
 };
+const WAIVER_EN = CAT.event_types[1].documents[0].templates.en;
+FORM.document = { slug: 'waiver', version: WAIVER_EN.version, sha256: WAIVER_EN.sha256, lang: 'en', title: WAIVER_EN.title, body: WAIVER_EN.body, adult_only: false, attestation_text: null };
 
 test('client: POST /api/bookings body has the shape the engine route takes', () => {
   const E = client(ON);
@@ -299,7 +329,12 @@ test('client: POST /api/bookings body has the shape the engine route takes', () 
     { purpose: 'services_ack', granted: true, text_version: 'gnp-visit-index-v2.32.0', channel: 'web' },
     { purpose: 'waiver', granted: true, text_version: 'waiver@1.0.0', channel: 'web' }]);
   for (const c of b.consents) assert.match(c.purpose, /^[a-z][a-z0-9_]{1,39}$/, 'engine consent purpose pattern');
-  assert.deepEqual(b.intake.waiver, { accepted: true, signed_name: 'Ana Maria Lopez', text: 'I understand birdwatching...', text_lang: 'en', text_version: 'waiver@1.0.0', at: '2026-11-16T12:00:00Z' });
+  assert.deepEqual(b.intake.waiver, { accepted: true, signed_name: 'Ana Maria Lopez', text_lang: 'en', text_version: 'waiver@1.0.0', sha256: WAIVER_EN.sha256, at: '2026-11-16T12:00:00Z' });
+  // The waiver is signed with the booking (engine 0.7.0): the template the
+  // page showed, by version and SHA-256, in the booking language. Not adult
+  // only, so no attest_adult.
+  assert.deepEqual(b.signatures, [{ slug: 'waiver', version: '1.0.0', sha256: WAIVER_EN.sha256, lang: 'en', typed_name: 'Ana Maria Lopez', accepted: true }]);
+  assert.equal(WAIVER_EN.sha256, createHash('sha256').update(WAIVER_EN.body, 'utf8').digest('hex'), 'the recorded SHA-256 is the text\'s');
   assert.equal(b.intake.sub_option, 'TARDE');
   assert.equal(b.intake.arrival_time, '15:15');
   assert.equal(b.intake.special_requests, 'vegetarian');
@@ -320,6 +355,13 @@ test('client: the booking request blocks on a missing waiver, signature, slot or
   assert.equal(code({ ...FORM, slot: null }), 'slot_missing');
   assert.equal(code({ ...FORM, people: 0 }), 'people_invalid');
   assert.equal(code({ ...FORM, subOption: 'NOCHE' }), 'event_type_unknown');
+  assert.equal(code({ ...FORM, document: null }), 'document_missing', 'no waiver text from the engine: no booking');
+  assert.equal(code({ ...FORM, document: { ...FORM.document, lang: 'es' } }), 'document_missing', 'the text shown must be in the booking language');
+  const adult = { ...FORM.document, adult_only: true, attestation_text: 'I am 18 or older' };
+  assert.equal(code({ ...FORM, document: adult }), 'adult_attestation_required');
+  assert.equal(code({ ...FORM, document: adult, attestAdult: false }), 'adult_attestation_required');
+  const signedAdult = JSON.parse(JSON.stringify(E.bookingRequest({ ...FORM, document: adult, attestAdult: true }))).signatures[0];
+  assert.equal(signedAdult.attest_adult, true, 'attest_adult only for an adult-only template');
   const bare = client({ enabled: true, api: '/engine/api' });
   assert.throws(() => bare.bookingRequest(FORM), (e) => e.code === 'event_type_unknown', 'without eventTypes from config the slug is unknown, never guessed');
 });
@@ -495,4 +537,217 @@ test('index and manage send their engine calls through GnpEngine, never Apps Scr
   assert.match(manage, /if \(ENGINE\) return loadEngine\(\);/);
   assert.match(manage, /if \(ENGINE\) return doCancelEngine\(\);/);
   assert.match(manage, /GnpEngine\.postJson\(GnpEngine\.guestUrl\(token, '\/cancel'\), body\)/);
+});
+
+// ----------------------------------------------- catalogue (engine 0.7.0) --
+
+test('client: the catalogue gives plans with includes, sessions, instructions, deposit, policy, waiver and threshold', () => {
+  const E = client(ON);
+  assert.equal(E.catalogueUrl(), '/engine/api/catalogue');
+  const c = JSON.parse(JSON.stringify(E.catalogueConfig(CAT)));
+  assert.deepEqual(c.plans.map((p) => [p.key, p.priceMinor, p.currency, p.depositPct]), [['PASADIA', 13000000, 'COP', 50], ['GUAYACAN24', 22000000, 'COP', 50]]);
+  const pas = c.plans[0], g24 = c.plans[1];
+  assert.deepEqual(pas.subOptions.map((s) => [s.key, s.sessionEs]), [['AMANECER', '07:00 - 11:30'], ['TARDE', '15:00 - 18:00']]);
+  assert.match(pas.subOptions[0].instructionsEs, /llega entre 7:30 y 8:00/);
+  assert.match(pas.subOptions[1].instructionsEn, /arrive between 3:00 PM/);
+  assert.ok(pas.incluyeEs.length > 0 && pas.excluyeEn.length > 0, 'includes and excludes in both languages');
+  assert.deepEqual(g24.incluyeEs, CAT.event_types[2].includes.es);
+  assert.equal(g24.sessionEs, 'Llegada 14:00 · 24 h');
+  assert.equal(g24.sessionEn, 'Check-in 14:00 · 24 h');
+  assert.equal(g24.instructionsEs, '', 'no description published: nothing shown');
+  assert.deepEqual(pas.cancellation.tiers, [{ min_hours: 0, refund_pct: 50 }, { min_hours: 72, refund_pct: 100 }]);
+  assert.equal(c.lowThreshold, 2);
+  assert.equal(c.minDaysAdvance, 7);
+  assert.equal(c.site.registrationId, 'RNT 273376');
+  const w = E.documentFor(c.documents.waiver, 'ES');
+  assert.deepEqual([w.slug, w.version, w.lang, w.adult_only], ['waiver', '1.0.0', 'es', false]);
+  assert.equal(w.sha256, createHash('sha256').update(w.body, 'utf8').digest('hex'));
+  assert.equal(E.documentFor({ slug: 'waiver', templates: { es: w } }, 'EN'), null, 'no template in the page language: null, never the other language');
+  // Unknown stays unknown.
+  const odd = JSON.parse(JSON.stringify(CAT));
+  odd.event_types[0].deposit_pct = 30; delete odd.booking.low_availability_threshold;
+  const o = E.catalogueConfig(odd);
+  assert.equal(o.plans[0].depositPct, null, 'sessions that disagree on the deposit: no figure');
+  assert.equal(o.lowThreshold, null);
+  assert.equal(E.catalogueConfig({ ok: false, error: 'setting_missing' }), null);
+});
+
+test('client: almost full, the cancellation policy and the legal line', () => {
+  const E = client(ON);
+  assert.deepEqual([0, 1, 2, 3].map((n) => E.capacityState(n, 2)), ['full', 'low', 'low', 'ok']);
+  assert.deepEqual([1, 3].map((n) => E.capacityState(n, 3)), ['low', 'low']);
+  assert.equal(E.capacityState(1, null), 'ok', 'threshold unknown: never "almost full"');
+  const pol = CAT.event_types[0].cancellation;
+  assert.deepEqual(JSON.parse(JSON.stringify(E.policyLines(pol, 'ES'))), [
+    'Si cancelas con 72 horas o más antes del inicio: te reembolsamos el 100% de lo pagado.',
+    'Si cancelas con menos de 72 horas: te reembolsamos el 50%.',
+    'Si no te presentas: reembolso del 0%.',
+    'Si cancelamos nosotros: reembolso del 100%.']);
+  assert.match(E.policyLines(pol, 'EN')[0], /^Cancel 72 hours or more before the start: 100%/);
+  assert.equal(E.policyLines(null, 'ES').length, 0);
+  const l = E.legalLines(E.catalogueConfig(CAT).site, 'ES');
+  assert.equal(l.rnt, 'Registro Nacional de Turismo: RNT 273376');
+  assert.equal(l.legal, 'GUAYACAN NATURAL PRESERVE · NIT 7542144-3');
+  assert.equal(E.legalLines({ registrationId: 'RNT 1' }, 'EN').rnt, 'National Tourism Registry: RNT 1');
+});
+
+test('client: the sign page body for a document left unsigned', () => {
+  const E = client(ON);
+  assert.equal(E.documentUrl(TOKEN), '/engine/api/documents/' + TOKEN);
+  assert.equal(E.documentUrl(TOKEN, '/sign'), '/engine/api/documents/' + TOKEN + '/sign');
+  const view = { title: 'Release', body: 'x', lang: 'en', version: '1.0.0', adult_only: false, attestation_text: null, status: 'pending' };
+  assert.deepEqual(JSON.parse(JSON.stringify(E.signRequest(view, { accept: true, name: ' Ana Lopez ' }))), { signer_name: 'Ana Lopez', accept: true });
+  const code = (v, f) => { try { E.signRequest(v, f); return 'none'; } catch (e) { return e.code; } };
+  assert.equal(code(view, { accept: false, name: 'Ana' }), 'accept_required');
+  assert.equal(code(view, { accept: true, name: '  ' }), 'signer_name_required');
+  assert.equal(code({ ...view, status: 'signed' }, { accept: true, name: 'Ana' }), 'not_open');
+  assert.equal(code({ ...view, adult_only: true }, { accept: true, name: 'Ana' }), 'adult_attestation_required');
+  assert.equal(E.signRequest({ ...view, adult_only: true }, { accept: true, name: 'Ana', attestAdult: true }).attest_adult, true);
+});
+
+// A small DOM for running a page's own script in a sandbox.
+function stubDom() {
+  const store = {};
+  // Any element id reads as an element, created on first use, as a page's
+  // markup would provide it.
+  const els = new Proxy(store, { get: (t, k) => (typeof k === 'string' ? (t[k] || (t[k] = el(k))) : undefined) });
+  const cls = () => { const set = new Set(); return { add: (c) => set.add(c), remove: (c) => set.delete(c), toggle: (c, on) => { const v = on === undefined ? !set.has(c) : on; if (v) set.add(c); else set.delete(c); return v; }, contains: (c) => set.has(c) }; };
+  const el = (id) => ({ id, value: '', checked: false, textContent: '', innerHTML: '', className: '', placeholder: '', disabled: false, style: {}, classList: cls(), min: '',
+    appendChild() {}, scrollIntoView() {}, focus() {}, setAttribute() {}, removeAttribute() {}, querySelector: () => null, querySelectorAll: () => [], parentElement: { style: {} } });
+  const document = {
+    getElementById: (id) => els[id],
+    querySelector: (q) => els[q],
+    querySelectorAll: () => [],
+    createElement: () => el('created'),
+    documentElement: { lang: 'es' },
+    addEventListener() {},
+  };
+  return { els, document };
+}
+
+test('sign page: shows the engine document and posts the signature through the proxy', async () => {
+  const html = read('sign.html');
+  assert.ok(html.indexOf('<script src="/config.js"></script>') > 0 && html.indexOf('<script src="/engine-client.js"></script>') > html.indexOf('<script src="/config.js"></script>'));
+  const { els, document } = stubDom();
+  const posted = [];
+  const fetch = async (url, init) => {
+    posted.push([url, init && init.method, init && init.body]);
+    if (url === '/engine/api/documents/' + TOKEN) return new Response(JSON.stringify({ ok: true, document: { title: 'Release of liability', body: 'I understand...', lang: 'en', version: '1.0.0', adult_only: false, attestation_text: null, status: 'pending' } }));
+    return new Response(JSON.stringify({ ok: true }));
+  };
+  const E = client(ON, { fetch });
+  const script = html.match(/<script>([\s\S]*?)<\/script>/)[1];
+  const sandbox = { window: { GnpEngine: E, location: { search: '?token=' + TOKEN } }, GnpEngine: E, document, URLSearchParams, console, JSON, String, Promise, Response };
+  vm.createContext(sandbox);
+  vm.runInContext(script + '\nthis.doSign = doSign; this.loaded = load;', sandbox);
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(els.docBody.textContent, 'I understand...');
+  assert.equal(els.docTitle.textContent, 'Release of liability');
+  els.f_accept.checked = true; els.f_name.value = 'Ana Lopez';
+  await sandbox.doSign();
+  const last = posted[posted.length - 1];
+  assert.deepEqual([last[0], last[1], JSON.parse(last[2])], ['/engine/api/documents/' + TOKEN + '/sign', 'POST', { signer_name: 'Ana Lopez', accept: true }]);
+  assert.match(els.msg.textContent, /Signed/);
+});
+
+test('index in engine mode: catalogue texts on the page, the waiver signed with the booking, document_changed reloads the text', async () => {
+  const html = read('index.html');
+  const script = html.match(/<script>\n\/\* ============ CONFIG ============ \*\/([\s\S]*?)<\/script>/)[1].replace(/\nloadConfig\(\);\s*$/, '\n');
+  const { els, document } = stubDom();
+  let cat = CAT, catalogueReads = 0;
+  const posted = [];
+  let answer = null;
+  const fetch = async (url, init) => {
+    if (url === '/engine/api/catalogue') { catalogueReads++; return new Response(JSON.stringify(cat)); }
+    if (String(url).startsWith('/engine/api/availability')) {
+      const slug = new URL('http://x' + url).searchParams.get('event_type');
+      const day = new URL('http://x' + url).searchParams.get('from');
+      return new Response(JSON.stringify({ ok: true, slots: [{ start: day + (slug === 'pasadia-tarde' ? 'T15:00:00-05:00' : 'T07:00:00-05:00'), remaining: 2, capacity: 8 }] }));
+    }
+    if (url === '/engine/api/bookings') { posted.push(JSON.parse(init.body)); return new Response(JSON.stringify(answer)); }
+    throw new Error('unexpected fetch ' + url);
+  };
+  const E = client(ON, { fetch });
+  const sandbox = { window: { GnpEngine: E, GNP_ENGINE: ON, location: { search: '' } }, GnpEngine: E, navigator: { language: 'es-CO' }, document, fetch, URLSearchParams, URL, console: { log() {}, error() {} }, JSON, String, Number, Math, Date, Object, Array, Promise, Response, setTimeout };
+  vm.createContext(sandbox);
+  vm.runInContext(script + '\nthis.loadConfig = loadConfig; this.selectPlan = selectPlan; this.submitReservation = submitReservation; this.getCONFIG = () => CONFIG; this.checkAvailability = checkAvailability; this.setSub = (k) => { selectedSubOption = k; };', sandbox);
+  await sandbox.loadConfig();
+  assert.equal(catalogueReads, 1);
+  assert.equal(els['t-waiverText'].textContent, CAT.event_types[0].documents[0].templates.es.body, 'the waiver shown is the engine template');
+  assert.equal(els.rntFoot.textContent, 'Registro Nacional de Turismo: RNT 273376');
+  assert.equal(els.legalFoot.textContent, 'GUAYACAN NATURAL PRESERVE · NIT 7542144-3');
+  sandbox.selectPlan('PASADIA');
+  sandbox.setSub('TARDE');
+  sandbox.selectPlan('PASADIA'); // re-render with the plan chosen
+  assert.match(els.policyList.innerHTML, /72 horas o más antes del inicio: te reembolsamos el 100%/);
+  assert.match(els.planInfo.innerHTML, /depósito del 50% del total/);
+  assert.match(els.receiptContent.innerHTML, /Depósito para reservar: 50% del total/);
+  assert.equal(els.f_fecha.min.length, 10, 'the date picker starts after the engine lead time');
+  els.f_fecha.value = '2026-12-02';
+  await sandbox.checkAvailability();
+  assert.equal(els.cap_TARDE.className, 'jcap low', '2 left with the engine threshold 2: almost full');
+  sandbox.getCONFIG().lowThreshold = 1;
+  await sandbox.checkAvailability();
+  assert.equal(els.cap_TARDE.className, 'jcap ok', 'the threshold is the catalogue\'s, not a constant');
+  sandbox.getCONFIG().lowThreshold = 2;
+
+  // Fill the form and book.
+  const date = '2026-12-02';
+  Object.assign(els.f_nombre, { value: 'QA Acceptance' }); Object.assign(els.f_email, { value: 'qa-acceptance+x@example.test' });
+  Object.assign(els.f_waCountry, { value: '+57' }); Object.assign(els.f_waNumber, { value: '3001234567' });
+  Object.assign(els.f_fecha, { value: date }); els.f_ack.checked = true; els.f_waiver.checked = true; els.f_waiverName.value = 'QA Acceptance';
+  sandbox.selectPlan('GUAYACAN24');
+  answer = { ok: true, booking: { ref: 'BK-1', status: 'requested', deposit_minor: 22000000, total_minor: 44000000, currency: 'COP' }, guest_token: TOKEN, documents: [{ id: 'doc_1', slug: 'waiver', status: 'signed' }] };
+  await sandbox.submitReservation();
+  assert.equal(posted.length, 1);
+  const es = CAT.event_types[2].documents[0].templates.es;
+  assert.deepEqual(posted[0].signatures, [{ slug: 'waiver', version: es.version, sha256: es.sha256, lang: 'es', typed_name: 'QA Acceptance', accepted: true }]);
+  assert.equal(posted[0].event_type, 'guayacan24');
+  assert.equal(els.successRid.textContent, 'BK-1');
+
+  // The waiver changed after the page loaded: 409 document_changed.
+  const changed = JSON.parse(JSON.stringify(CAT));
+  for (const et of changed.event_types) et.documents[0].templates.es = { ...es, version: '1.1.0', body: 'Texto nuevo', sha256: createHash('sha256').update('Texto nuevo').digest('hex') };
+  cat = changed;
+  answer = { ok: false, error: 'document_changed', message: 'waiver has changed', detail: { slug: 'waiver', version: '1.1.0' } };
+  els.f_waiver.checked = true;
+  await sandbox.submitReservation();
+  assert.equal(catalogueReads, 2, 'the catalogue was read again');
+  assert.equal(els['t-waiverText'].textContent, 'Texto nuevo', 'the new text is shown');
+  assert.equal(els.f_waiver.checked, false, 'the guest must accept the new text again');
+  assert.match(els.msgBox.textContent, /cambió/);
+  els.f_waiver.checked = true;
+  answer = { ok: true, booking: { ref: 'BK-2', status: 'requested', deposit_minor: 1, total_minor: 2, currency: 'COP' }, guest_token: TOKEN };
+  await sandbox.submitReservation();
+  assert.equal(posted[posted.length - 1].signatures[0].version, '1.1.0', 'the next attempt signs the text now shown');
+});
+
+// ----------------------------------------------------- QA deployment config --
+
+function jsonc(text) {
+  let out = '', inStr = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inStr) { out += ch; if (ch === '\\') { out += text[++i]; } else if (ch === '"') inStr = false; continue; }
+    if (ch === '"') { inStr = true; out += ch; continue; }
+    if (ch === '/' && text[i + 1] === '/') { while (i < text.length && text[i] !== '\n') i++; out += '\n'; continue; }
+    out += ch;
+  }
+  return JSON.parse(out.replace(/,(\s*[}\]])/g, '$1'));
+}
+
+test('wrangler.jsonc: production stays as it was; env.qa is its own Worker on sv7n.app with the QA engine', () => {
+  const w = jsonc(readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
+  assert.equal(w.name, 'gnp-visit-site');
+  assert.equal(w.main, 'src/worker.js');
+  assert.equal(w.keep_vars, true, 'production ENGINE_BASE stays a dashboard variable');
+  for (const k of ['vars', 'routes', 'route']) assert.equal(w[k], undefined, 'the production top level sets no ' + k);
+  const qa = w.env && w.env.qa;
+  assert.ok(qa, 'env.qa exists');
+  assert.equal(qa.name, 'gnp-visit-site-qa', 'a separate Worker, never the production one');
+  assert.equal(qa.vars.ENGINE_BASE, 'https://qa.gnp.sv7n.app');
+  assert.equal(engineConfig({ ENGINE_BASE: qa.vars.ENGINE_BASE }).base, 'https://qa.gnp.sv7n.app');
+  assert.deepEqual(qa.routes, [{ pattern: 'qa.gnp-visit.sv7n.app', custom_domain: true }]);
+  assert.doesNotMatch(JSON.stringify(qa), /guayacanpreserve\.com/, 'QA never claims a production host');
+  assert.deepEqual(Object.keys(w.env), ['qa']);
 });

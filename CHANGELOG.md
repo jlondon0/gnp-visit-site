@@ -3,6 +3,57 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-11-16 - Engine 0.7.0 on the pages, an entry wrangler accepts, a QA deployment (track/engine)
+- Symptom: `wrangler dev` 4.162 and 4.163 stopped on `src/worker.js` with
+  "Incorrect type for map entry 'FRESH_MS'" (main too; found in the entry
+  below). Cause: current workerd treats every named export of the entry
+  module as an entrypoint, and the entry exported constants. Fix: the entry
+  exports the fetch handler only; the calendar copy, its constants, `UPSTREAM`
+  and `WORKER_BUILD` (now `calendar-cache v1.2.0 · 2026-11-16`) moved to
+  `src/calendar.js`; `live-check.yml` and the runner read the markers there.
+  The runner now fails when the entry exports anything but `default`
+  (mutation-tested). `wrangler deploy --dry-run` and `wrangler dev` pass with
+  4.162 (the NAS) and 4.163 (current), default and `--env qa`.
+- Engine 0.7.0 (sv7n-core): index `v2.34.0` reads `GET /api/catalogue`
+  through the proxy (now forwarded, with a document's view and sign routes):
+  plan includes and excludes, session times and arrival instructions, the
+  deposit percent, the cancellation policy as sentences, the RNT and legal
+  line, the lead time for the date picker, and the waiver text in the page
+  language. The booking request signs the waiver as `signatures`
+  (`{slug, version, sha256, lang, typed_name, accepted: true}`, plus
+  `attest_adult` only for an adult-only template; the GNP waiver is not) next
+  to the consents and intake; no waiver text from the engine blocks the
+  request. A 409 `document_changed` reloads the catalogue, shows the new text
+  and clears the acceptance; the next attempt signs the new version. "Almost
+  full" on index and on `/api/calendar` is the catalogue's
+  `booking.low_availability_threshold` (a catalogue without it blocks the
+  month, nothing is cached). New `sign.html` (`sign v1.0.0`): a document the
+  engine left unsigned, shown and signed through `/engine/api/documents/<token>`.
+  Guest links: the engine's `site.guest_links` are set by the sv7n-pilots seed
+  to `/manage?token={token}`, `/pay?token={token}`, `/sign?token={token}` on
+  `site.base_url`; pay already handled `?payment=success|cancelled`.
+- QA deployment: `wrangler.jsonc` `env.qa`, Worker `gnp-visit-site-qa`,
+  custom domain `qa.gnp-visit.sv7n.app`, `ENGINE_BASE=https://qa.gnp.sv7n.app`
+  as a config variable. Production (the top level) is unchanged and Workers
+  Builds never reads `env.qa` (DEPLOY.md, "QA deployment").
+- Tests: `tests/engine.test.mjs` 34 (catalogue mapping from a recorded QA
+  answer, policy and legal lines, the signature shape and its blocks, the
+  sign page and index's own script in a stub DOM including the
+  document_changed reload, the threshold, the forwarded routes, the QA config
+  keeping production as it was). Mutation-tested: signatures dropped,
+  attest_adult always sent, the reload removed, a fixed threshold in index or
+  in the Worker, the catalogue not forwarded; each turns it red.
+- Verified 2026-11-16 on https://qa.gnp-visit.sv7n.app (deployed from the NAS
+  with `--env qa`; engine 0.7.0 with `site.base_url` set to this host by the
+  seed): `ENGINE_SITE=https://qa.gnp-visit.sv7n.app node tests/engine-live.mjs --book`
+  13/13: pages, `/config.js` engine on, the catalogue (both plans, 50%
+  deposit, policy, waiver es 1.0.0 with SHA-256, RNT, threshold 2), a
+  test-record Guayacan24 booking BK-54DGMU with the waiver signed in the
+  request (document signed), the calendar showing 2026-12-10 and 12-11 full,
+  the guest view, payment options read only (no Checkout session), the manage
+  and pay paths the engine links to, and a cancel (refund 0). Production
+  still serves `calendar-cache v1.0.1 · 2026-09-13`.
+
 ## 2026-11-16 - Backend switch: the pages can run on the sv7n engine (track/engine)
 - Change request: Guayacan moves from Apps Script to the sv7n engine (sv7n-core
   0.6.0; scope in sv7n-core `docs/legacy/gnp-migration-plan.md`, "Scope decided

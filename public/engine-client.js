@@ -14,11 +14,11 @@
 (function (root) {
   'use strict';
 
-  // The waiver text on index.html is the engine's waiver template 1.0.0 (the
-  // QA seed builds that template from these exact strings); the services
+  // In engine mode the waiver shown and signed is the engine's document
+  // template from GET /api/catalogue (slug, version, SHA-256 and text in the
+  // page language); it is signed with the booking (signatures). The services
   // approval text has no engine template and is named after the page build
   // that introduced it.
-  var WAIVER_TEXT_VERSION = 'waiver@1.0.0';
   var ACK_TEXT_VERSION = 'gnp-visit-index-v2.32.0';
 
   function cfg(c) { return c === undefined ? (root.GNP_ENGINE || null) : c; }
@@ -133,6 +133,147 @@
     return { currency: plan.currency, unitMinor: plan.priceMinor, people: people, totalMinor: total };
   }
 
+  /* ------------------------------------------------ catalogue (0.7.0) -- */
+
+  function catalogueUrl(c) { return api(c) + '/catalogue'; }
+
+  function list(v, L) {
+    var x = v && typeof v === 'object' && !Array.isArray(v) ? (v[lang(L)] || v[Object.keys(v)[0]]) : v;
+    return Array.isArray(x) ? x.filter(function (s) { return typeof s === 'string' && s; }) : [];
+  }
+
+  /* 'HH:MM - HH:MM' when every weekly session of the event type starts and
+   * ends at the same time; for a stay (multi_day) the arrival time and hours.
+   * '' when the sessions differ or are not published. */
+  function sessionText(et, L) {
+    var ss = et && Array.isArray(et.sessions) ? et.sessions : [];
+    if (!ss.length) return '';
+    var a = ss[0].start, b = ss[0].end;
+    for (var i = 1; i < ss.length; i++) if (ss[i].start !== a || ss[i].end !== b) return '';
+    if (typeof a !== 'string') return '';
+    if (et.time_model === 'multi_day') {
+      var h = typeof et.duration_min === 'number' ? Math.round(et.duration_min / 60) : null;
+      return (lang(L) === 'en' ? 'Check-in ' : 'Llegada ') + a + (h ? ' · ' + h + ' h' : '');
+    }
+    return typeof b === 'string' ? a + ' - ' + b : a;
+  }
+
+  /* Deposit percent from the event type's payment terms, or null (unknown). */
+  function depositPct(et) {
+    if (!et) return null;
+    if (et.payment_model === 'deposit' && typeof et.deposit_pct === 'number') return et.deposit_pct;
+    if (et.payment_model === 'full') return 100;
+    return null;
+  }
+
+  /* The documents an event type requires, merged by slug, with the template
+   * in each language: { slug: { slug, adult_only, attestation_text, templates } }. */
+  function documentsOf(cat) {
+    var out = {};
+    var ets = cat && Array.isArray(cat.event_types) ? cat.event_types : [];
+    ets.forEach(function (et) {
+      (Array.isArray(et.documents) ? et.documents : []).forEach(function (d) {
+        if (d && typeof d.slug === 'string' && !out[d.slug]) out[d.slug] = d;
+      });
+    });
+    return out;
+  }
+
+  /* One document in the page language, as the booking form shows and signs
+   * it, or null when the engine has no template in that language (the form
+   * must then block: a signature is checked against the text in the booking
+   * language). */
+  function documentFor(doc, L) {
+    if (!doc || !doc.templates) return null;
+    var l = lang(L);
+    var t = doc.templates[l];
+    if (!t || typeof t.version !== 'string' || typeof t.sha256 !== 'string' || typeof t.body !== 'string') return null;
+    return { slug: doc.slug, version: t.version, sha256: t.sha256, lang: l, title: t.title || '', body: t.body,
+      adult_only: doc.adult_only === true, attestation_text: doc.adult_only === true ? (doc.attestation_text || '') : null };
+  }
+
+  /* What index.html needs from GET /api/catalogue: the plans (built as
+   * planCatalog builds them, plus includes, excludes, instructions, session
+   * times, deposit and cancellation), the event types by slug, the documents,
+   * the almost-full threshold, the lead time in whole days and the legal
+   * lines. Unknown stays null; nothing is defaulted. */
+  function catalogueConfig(cat, c) {
+    if (!cat || cat.ok !== true || !Array.isArray(cat.event_types)) return null;
+    var bySlug = {};
+    cat.event_types.forEach(function (e) { if (e && typeof e.slug === 'string') bySlug[e.slug] = e; });
+    var keys = ['AMANECER', 'TARDE', 'GUAYACAN24'], answers = {};
+    keys.forEach(function (k) { var sl = slugFor(k, null, c); if (sl && bySlug[sl]) answers[k] = { ok: true, event_type: bySlug[sl] }; });
+    var plans = planCatalog(answers);
+    plans.forEach(function (p) {
+      var ets = p.subOptions.length ? p.subOptions.map(function (s) { return bySlug[slugFor(p.key, s.key, c)]; }) : [bySlug[slugFor(p.key, null, c)]];
+      var first = ets[0];
+      p.incluyeEs = list(first.includes, 'es'); p.incluyeEn = list(first.includes, 'en');
+      p.excluyeEs = list(first.excludes, 'es'); p.excluyeEn = list(first.excludes, 'en');
+      var dp = ets.map(depositPct);
+      p.depositPct = dp.every(function (x) { return x !== null && x === dp[0]; }) ? dp[0] : null;
+      var pol = ets.map(function (e) { return JSON.stringify(e.cancellation || null); });
+      p.cancellation = pol.every(function (x) { return x === pol[0]; }) ? (first.cancellation || null) : null;
+      p.sessionEs = p.subOptions.length ? '' : sessionText(first, 'es');
+      p.sessionEn = p.subOptions.length ? '' : sessionText(first, 'en');
+      p.instructionsEs = p.subOptions.length ? '' : localized(first.description, 'ES');
+      p.instructionsEn = p.subOptions.length ? '' : localized(first.description, 'EN');
+      p.subOptions.forEach(function (s, i) {
+        var e = ets[i];
+        s.sessionEs = sessionText(e, 'es'); s.sessionEn = sessionText(e, 'en');
+        s.instructionsEs = localized(e.description, 'ES'); s.instructionsEn = localized(e.description, 'EN');
+      });
+    });
+    var b = cat.booking || {}, site = cat.site || {};
+    var low = b.low_availability_threshold;
+    var lead = b.lead_time_hours;
+    return {
+      engine: true, plans: plans, bySlug: bySlug, documents: documentsOf(cat),
+      lowThreshold: Number.isInteger(low) && low >= 0 ? low : null,
+      minDaysAdvance: typeof lead === 'number' && lead >= 0 ? Math.ceil(lead / 24) : null,
+      site: { name: site.name || '', legalName: site.legal_name || '', taxId: site.tax_id || '', registrationId: site.registration_id || '' },
+    };
+  }
+
+  /* 'full' | 'low' | 'ok' for a remaining count against the engine's
+   * almost-full threshold; with the threshold unknown, never 'low'. */
+  function capacityState(remaining, threshold) {
+    if (!(remaining > 0)) return 'full';
+    return typeof threshold === 'number' && remaining <= threshold ? 'low' : 'ok';
+  }
+
+  /* The cancellation tiers as sentences in the page language, highest tier
+   * first. Hours count to the start of the activity, as the engine measures
+   * them. [] when the policy is not published. */
+  function policyLines(p, L) {
+    if (!p || !Array.isArray(p.tiers) || !p.tiers.length) return [];
+    var en = lang(L) === 'en';
+    var tiers = p.tiers.filter(function (t) { return t && typeof t.min_hours === 'number' && typeof t.refund_pct === 'number'; })
+      .slice().sort(function (a, b) { return b.min_hours - a.min_hours; });
+    var out = [];
+    tiers.forEach(function (t, i) {
+      var prev = i > 0 ? tiers[i - 1].min_hours : null;
+      if (t.min_hours > 0) out.push(en ? 'Cancel ' + t.min_hours + ' hours or more before the start: ' + t.refund_pct + '% of what you paid is refunded.'
+        : 'Si cancelas con ' + t.min_hours + ' horas o más antes del inicio: te reembolsamos el ' + t.refund_pct + '% de lo pagado.');
+      else if (prev !== null) out.push(en ? 'Cancel less than ' + prev + ' hours before the start: ' + t.refund_pct + '% is refunded.'
+        : 'Si cancelas con menos de ' + prev + ' horas: te reembolsamos el ' + t.refund_pct + '%.');
+      else out.push(en ? 'Cancellation: ' + t.refund_pct + '% of what you paid is refunded.' : 'Cancelación: te reembolsamos el ' + t.refund_pct + '% de lo pagado.');
+    });
+    if (typeof p.deposit_retained_pct === 'number' && p.deposit_retained_pct > 0) out.push(en ? p.deposit_retained_pct + '% of the deposit is not refundable.' : 'El ' + p.deposit_retained_pct + '% del depósito no es reembolsable.');
+    if (typeof p.no_show_refund_pct === 'number') out.push(en ? 'No-show: ' + p.no_show_refund_pct + '% is refunded.' : 'Si no te presentas: reembolso del ' + p.no_show_refund_pct + '%.');
+    if (typeof p.business_cancel_refund_pct === 'number') out.push(en ? 'If we cancel: ' + p.business_cancel_refund_pct + '% is refunded.' : 'Si cancelamos nosotros: reembolso del ' + p.business_cancel_refund_pct + '%.');
+    return out;
+  }
+
+  /* The registration and legal line for the footer, from the catalogue's
+   * site block: 'RNT 273376' and 'legal name · NIT x'. Empty parts are left out. */
+  function legalLines(site, L) {
+    if (!site) return { rnt: '', legal: '' };
+    var en = lang(L) === 'en';
+    var rnt = site.registrationId ? (en ? 'National Tourism Registry: ' : 'Registro Nacional de Turismo: ') + site.registrationId : '';
+    var legal = [site.legalName, site.taxId ? 'NIT ' + site.taxId : ''].filter(Boolean).join(' · ');
+    return { rnt: rnt, legal: legal };
+  }
+
   function splitName(full) {
     var s = String(full || '').trim().replace(/\s+/g, ' ');
     var i = s.indexOf(' ');
@@ -144,12 +285,14 @@
   /* POST /api/bookings body from the booking form.
    * f: { plan, subOption, slot, people, lang, nombre, email, phone, requerimientos,
    *      arrivalTime, hasMinors, minorWith, ackAccepted, ackText, waiverAccepted,
-   *      waiverName, waiverText, page }
-   * The waiver is recorded the two ways the engine takes from a booking form:
-   * a consent (purpose waiver, with the text version) on the customer, and the
-   * typed name, the text and its version in the booking intake. The engine's
-   * document signature (sealed copy, evidence) is a separate signing link it
-   * emails when the event type lists a waiver template; the form cannot sign it. */
+   *      waiverName, document, attestAdult, page }
+   * document: the waiver as the page showed it (documentFor: slug, version,
+   * sha256, lang, adult_only). It is signed with the booking: one entry in
+   * signatures, which the engine checks against its template (409
+   * document_changed when the text changed since the page loaded) and seals
+   * in the booking's own batch. attest_adult is sent only for an adult-only
+   * template, and then must be true. The consents and the intake keep the
+   * acceptance with the booking as before. */
   function bookingRequest(f) {
     if (!f || !f.slot || typeof f.slot.start !== 'string') throw blocked('slot_missing', 'no slot chosen');
     if (!(Number.isInteger(f.people) && f.people > 0)) throw blocked('people_invalid', 'people must be a positive whole number');
@@ -160,6 +303,13 @@
     var slug = slugFor(f.plan, f.subOption, f.config);
     if (!slug) throw blocked('event_type_unknown', 'no engine event type for ' + (f.subOption || f.plan));
     var l = lang(f.lang);
+    var d = f.document;
+    if (!d || typeof d.slug !== 'string' || typeof d.version !== 'string' || typeof d.sha256 !== 'string') throw blocked('document_missing', 'the waiver text from the engine is not loaded');
+    if (d.lang !== l) throw blocked('document_missing', 'the waiver shown is not in the booking language');
+    if (d.adult_only === true && f.attestAdult !== true) throw blocked('adult_attestation_required', 'the signer must confirm being an adult');
+    var signature = { slug: d.slug, version: d.version, sha256: d.sha256, lang: d.lang, typed_name: signed, accepted: true };
+    if (d.adult_only === true) signature.attest_adult = true;
+    var textVersion = d.slug + '@' + d.version;
     var name = String(f.nombre || '').trim();
     var parts = splitName(name);
     var at = f.now || new Date().toISOString();
@@ -171,7 +321,7 @@
       has_minors: f.hasMinors === true ? true : (f.hasMinors === false ? false : null),
       minor_accompanied_by: f.hasMinors === true ? (String(f.minorWith || '').trim() || null) : null,
       services_ack: { accepted: true, text: f.ackText || null, text_version: ACK_TEXT_VERSION, at: at },
-      waiver: { accepted: true, signed_name: signed, text: f.waiverText || null, text_lang: l, text_version: WAIVER_TEXT_VERSION, at: at },
+      waiver: { accepted: true, signed_name: signed, text_lang: l, text_version: textVersion, sha256: d.sha256, at: at },
       source_page: f.page || 'index',
     };
     return {
@@ -190,8 +340,9 @@
       intake: intake,
       consents: [
         { purpose: 'services_ack', granted: true, text_version: ACK_TEXT_VERSION, channel: 'web' },
-        { purpose: 'waiver', granted: true, text_version: WAIVER_TEXT_VERSION, channel: 'web' },
+        { purpose: 'waiver', granted: true, text_version: textVersion, channel: 'web' },
       ],
+      signatures: [signature],
     };
   }
 
@@ -205,6 +356,7 @@
       ok: true, ref: b.ref, status: b.status, token: json.guest_token,
       payNow: b.status === 'pending_payment' && b.deposit_minor > 0,
       depositText: formatMoney(b.deposit_minor, b.currency), totalText: formatMoney(b.total_minor, b.currency),
+      signed: Array.isArray(json.documents) ? json.documents.filter(function (d) { return d && d.status === 'signed'; }).map(function (d) { return d.slug; }) : [],
       manageUrl: '/manage?token=' + encodeURIComponent(json.guest_token),
       payUrl: '/pay?token=' + encodeURIComponent(json.guest_token),
     };
@@ -304,6 +456,24 @@
     return /^https:\/\/checkout\.stripe\.com\//.test(json.url) ? json.url : null;
   }
 
+  /* ------------------------------------------- sign page (/sign?token=) -- */
+
+  function documentUrl(token, suffix, c) {
+    return api(c) + '/documents/' + encodeURIComponent(token) + (suffix || '');
+  }
+
+  /* POST /api/documents/<token>/sign body. view: the GET answer's document. */
+  function signRequest(view, f) {
+    if (!view || view.status !== 'pending') throw blocked('not_open', 'this document is not open for signature');
+    if (!f || f.accept !== true) throw blocked('accept_required', 'the document must be accepted');
+    var name = String(f.name || '').trim();
+    if (!name) throw blocked('signer_name_required', 'the typed full name is required');
+    if (view.adult_only === true && f.attestAdult !== true) throw blocked('adult_attestation_required', 'the signer must confirm being an adult');
+    var body = { signer_name: name, accept: true };
+    if (view.adult_only === true) body.attest_adult = true;
+    return body;
+  }
+
   var FRIENDLY = {
     es: {
       sold_out: 'Ya no hay cupo para esa fecha y jornada. Elige otra.',
@@ -313,6 +483,11 @@
       engine_unavailable: 'No pudimos conectar con el sistema de reservas. Intenta de nuevo en unos minutos.',
       engine_misconfigured: 'Las reservas en línea no están disponibles en este momento. Escríbenos por WhatsApp.',
       not_found: 'No encontramos esta reserva. Verifica el enlace.',
+      document_changed: 'El texto de la exoneración cambió mientras llenabas el formulario. Léelo de nuevo, acéptalo y envía otra vez.',
+      document_missing: 'No pudimos cargar el texto de la exoneración. Recarga la página.',
+      adult_attestation_required: 'Debes confirmar que eres mayor de edad para firmar.',
+      already_signed: 'Este documento ya está firmado.',
+      document_void: 'Este documento ya no está disponible para firma.',
     },
     en: {
       sold_out: 'There is no room left on that date and session. Please choose another.',
@@ -322,6 +497,11 @@
       engine_unavailable: 'We could not reach the booking system. Please try again in a few minutes.',
       engine_misconfigured: 'Online booking is not available right now. Please message us on WhatsApp.',
       not_found: 'We could not find this reservation. Please check the link.',
+      document_changed: 'The waiver text changed while you were filling in the form. Read it again, accept it and send again.',
+      document_missing: 'We could not load the waiver text. Please reload the page.',
+      adult_attestation_required: 'You must confirm you are an adult to sign.',
+      already_signed: 'This document is already signed.',
+      document_void: 'This document is no longer open for signature.',
     },
   };
 
@@ -401,7 +581,9 @@
   }
 
   root.GnpEngine = {
-    WAIVER_TEXT_VERSION: WAIVER_TEXT_VERSION, ACK_TEXT_VERSION: ACK_TEXT_VERSION,
+    ACK_TEXT_VERSION: ACK_TEXT_VERSION,
+    catalogueUrl: catalogueUrl, catalogueConfig: catalogueConfig, documentFor: documentFor, sessionText: sessionText,
+    capacityState: capacityState, policyLines: policyLines, legalLines: legalLines, documentUrl: documentUrl, signRequest: signRequest,
     enabled: enabled, lang: lang, localized: localized, formatMoney: formatMoney, slugFor: slugFor,
     availabilityUrl: availabilityUrl, slotOn: slotOn, clock: clock, planCatalog: planCatalog, receipt: receipt,
     splitName: splitName, bookingRequest: bookingRequest, bookingResult: bookingResult, guestUrl: guestUrl,

@@ -1,0 +1,367 @@
+{
+ "ok": true,
+ "site": {
+  "name": "Guayacan Natural Preserve",
+  "legal_name": "GUAYACAN NATURAL PRESERVE",
+  "tax_id": "7542144-3",
+  "registration_id": "RNT 273376",
+  "header_lines": [
+   "FINCA GUAYACAN VEREDA QUEBRADANEGRA, Calarcá, Quindío",
+   "NIT 7542144-3 - RNT 273376",
+   "No responsable de IVA",
+   "contact@guayacanpreserve.com - guayacanpreserve.com"
+  ],
+  "languages": [
+   "es",
+   "en"
+  ],
+  "default_language": "es",
+  "currencies": [
+   "COP"
+  ],
+  "timezone": "America/Bogota"
+ },
+ "booking": {
+  "lead_time_hours": 168,
+  "max_advance_days": 365,
+  "hold_minutes": 30,
+  "low_availability_threshold": 2,
+  "guest_cancel_enabled": true,
+  "reschedule_min_hours": 24,
+  "free_reschedules": null,
+  "retracto": {
+   "enabled": true,
+   "business_days": 5
+  }
+ },
+ "event_types": [
+  {
+   "slug": "pasadia-amanecer",
+   "name": {
+    "es": "Pasadía - Mañana",
+    "en": "Day Pass - Morning Session"
+   },
+   "description": {
+    "es": "Por favor llega entre 7:30 y 8:00 AM. Las actividades inician después de las 8:00 AM.",
+    "en": "Please arrive between 7:30 AM and 8:00 AM. Activities begin after 8:00 AM."
+   },
+   "includes": {
+    "es": [
+     "Caminata guiada con guía local (eBird y Merlin)",
+     "Desayuno, café, agua",
+     "Fruta de temporada",
+     "Visita al sendero",
+     "Uso de instalaciones"
+    ],
+    "en": [
+     "Guided walk with local guide (eBird & Merlin)",
+     "Breakfast, coffee, water",
+     "Seasonal fruit",
+     "Trail visit",
+     "Use of facilities"
+    ]
+   },
+   "excludes": {
+    "es": [
+     "Transporte externo e interno",
+     "Guía bilingüe"
+    ],
+    "en": [
+     "External and internal transport",
+     "Bilingual guide"
+    ]
+   },
+   "time_model": "block",
+   "duration_min": 270,
+   "sessions": [
+    {
+     "weekday": 0,
+     "start": "07:00",
+     "end": "11:30",
+     "start_min": 420,
+     "end_min": 690,
+     "valid_from": null,
+     "valid_to": null
+    },
+    {
+     "weekday": 1,
+     "start": "07:00",
+     "end": "11:30",
+     "start_min": 420,
+     "end_min": 690,
+     "valid_from": null,
+     "valid_to": null
+    }
+   ],
+   "sun_sessions": [],
+   "capacity_model": "per_slot",
+   "capacity": 8,
+   "approval_model": "request",
+   "currency": "COP",
+   "price_minor": 13000000,
+   "price_unit": "person",
+   "payment_model": "deposit",
+   "deposit_pct": 50,
+   "exclusive": false,
+   "blocks_next_day": [],
+   "cancellation": {
+    "name": "GNP standard",
+    "version": 1,
+    "tiers": [
+     {
+      "min_hours": 0,
+      "refund_pct": 50
+     },
+     {
+      "min_hours": 72,
+      "refund_pct": 100
+     }
+    ],
+    "deposit_retained_pct": 0,
+    "no_show_refund_pct": 0,
+    "business_cancel_refund_pct": 100
+   },
+   "documents": [
+    {
+     "slug": "waiver",
+     "adult_only": false,
+     "attestation_text": null,
+     "templates": {
+      "es": {
+       "version": "1.0.0",
+       "title": "Exoneracion de responsabilidad",
+       "body": "Entiendo que el avistamiento de aves implica caminar por senderos naturales y acepto los riesgos asociados. Eximo a Guayacan Preserve de responsabilidad por lesiones derivadas de mi participación.",
+       "sha256": "cd1f8771ee7739889ac05db5c02c1cf09cdfc7e9a8ce9e1f16f0b1a6b29e020c"
+      },
+      "en": {
+       "version": "1.0.0",
+       "title": "Release of liability",
+       "body": "I understand birdwatching involves walking on natural trails and accept the associated risks. I release Guayacan Preserve from liability for injuries arising from my participation.",
+       "sha256": "ee738eaf88d6df39f8ff63955298562a6bd1a7ef7075a8a0384ad47cbe1b83f9"
+      }
+     }
+    }
+   ],
+   "intake_schema": null
+  },
+  {
+   "slug": "pasadia-tarde",
+   "name": {
+    "es": "Pasadía - Tarde",
+    "en": "Day Pass - Afternoon Session"
+   },
+   "description": {
+    "es": "Por favor llega entre 3:00 PM y 3:30 PM.",
+    "en": "Please arrive between 3:00 PM and 3:30 PM."
+   },
+   "includes": {
+    "es": [
+     "Caminata guiada con guía local (eBird y Merlin)",
+     "Desayuno, café, agua",
+     "Fruta de temporada",
+     "Visita al sendero",
+     "Uso de instalaciones"
+    ],
+    "en": [
+     "Guided walk with local guide (eBird & Merlin)",
+     "Breakfast, coffee, water",
+     "Seasonal fruit",
+     "Trail visit",
+     "Use of facilities"
+    ]
+   },
+   "excludes": {
+    "es": [
+     "Transporte externo e interno",
+     "Guía bilingüe"
+    ],
+    "en": [
+     "External and internal transport",
+     "Bilingual guide"
+    ]
+   },
+   "time_model": "block",
+   "duration_min": 180,
+   "sessions": [
+    {
+     "weekday": 0,
+     "start": "15:00",
+     "end": "18:00",
+     "start_min": 900,
+     "end_min": 1080,
+     "valid_from": null,
+     "valid_to": null
+    },
+    {
+     "weekday": 1,
+     "start": "15:00",
+     "end": "18:00",
+     "start_min": 900,
+     "end_min": 1080,
+     "valid_from": null,
+     "valid_to": null
+    }
+   ],
+   "sun_sessions": [],
+   "capacity_model": "per_slot",
+   "capacity": 8,
+   "approval_model": "request",
+   "currency": "COP",
+   "price_minor": 13000000,
+   "price_unit": "person",
+   "payment_model": "deposit",
+   "deposit_pct": 50,
+   "exclusive": false,
+   "blocks_next_day": [],
+   "cancellation": {
+    "name": "GNP standard",
+    "version": 1,
+    "tiers": [
+     {
+      "min_hours": 0,
+      "refund_pct": 50
+     },
+     {
+      "min_hours": 72,
+      "refund_pct": 100
+     }
+    ],
+    "deposit_retained_pct": 0,
+    "no_show_refund_pct": 0,
+    "business_cancel_refund_pct": 100
+   },
+   "documents": [
+    {
+     "slug": "waiver",
+     "adult_only": false,
+     "attestation_text": null,
+     "templates": {
+      "es": {
+       "version": "1.0.0",
+       "title": "Exoneracion de responsabilidad",
+       "body": "Entiendo que el avistamiento de aves implica caminar por senderos naturales y acepto los riesgos asociados. Eximo a Guayacan Preserve de responsabilidad por lesiones derivadas de mi participación.",
+       "sha256": "cd1f8771ee7739889ac05db5c02c1cf09cdfc7e9a8ce9e1f16f0b1a6b29e020c"
+      },
+      "en": {
+       "version": "1.0.0",
+       "title": "Release of liability",
+       "body": "I understand birdwatching involves walking on natural trails and accept the associated risks. I release Guayacan Preserve from liability for injuries arising from my participation.",
+       "sha256": "ee738eaf88d6df39f8ff63955298562a6bd1a7ef7075a8a0384ad47cbe1b83f9"
+      }
+     }
+    }
+   ],
+   "intake_schema": null
+  },
+  {
+   "slug": "guayacan24",
+   "name": {
+    "es": "Guayacan 24 Horas",
+    "en": "Guayacan 24 Hours"
+   },
+   "description": null,
+   "includes": {
+    "es": [
+     "Alojamiento por una noche",
+     "Comida, desayuno y almuerzo",
+     "Café y agua",
+     "Caminata guiada (eBird y Merlin)",
+     "Fruta de temporada",
+     "Visita al sendero",
+     "Uso de instalaciones"
+    ],
+    "en": [
+     "One night lodging",
+     "Dinner, breakfast and lunch",
+     "Coffee and water",
+     "Guided walk (eBird & Merlin)",
+     "Seasonal fruit",
+     "Trail visit",
+     "Use of facilities"
+    ]
+   },
+   "excludes": {
+    "es": [
+     "Transporte externo e interno",
+     "Guía bilingüe"
+    ],
+    "en": [
+     "External and internal transport",
+     "Bilingual guide"
+    ]
+   },
+   "time_model": "multi_day",
+   "duration_min": 1440,
+   "sessions": [
+    {
+     "weekday": 0,
+     "start": "14:00",
+     "end": "24:00",
+     "start_min": 840,
+     "end_min": 1440,
+     "valid_from": null,
+     "valid_to": null
+    },
+    {
+     "weekday": 1,
+     "start": "14:00",
+     "end": "24:00",
+     "start_min": 840,
+     "end_min": 1440,
+     "valid_from": null,
+     "valid_to": null
+    }
+   ],
+   "sun_sessions": [],
+   "capacity_model": "per_slot",
+   "capacity": 5,
+   "approval_model": "request",
+   "currency": "COP",
+   "price_minor": 22000000,
+   "price_unit": "person",
+   "payment_model": "deposit",
+   "deposit_pct": 50,
+   "exclusive": true,
+   "blocks_next_day": [],
+   "cancellation": {
+    "name": "GNP standard",
+    "version": 1,
+    "tiers": [
+     {
+      "min_hours": 0,
+      "refund_pct": 50
+     },
+     {
+      "min_hours": 72,
+      "refund_pct": 100
+     }
+    ],
+    "deposit_retained_pct": 0,
+    "no_show_refund_pct": 0,
+    "business_cancel_refund_pct": 100
+   },
+   "documents": [
+    {
+     "slug": "waiver",
+     "adult_only": false,
+     "attestation_text": null,
+     "templates": {
+      "es": {
+       "version": "1.0.0",
+       "title": "Exoneracion de responsabilidad",
+       "body": "Entiendo que el avistamiento de aves implica caminar por senderos naturales y acepto los riesgos asociados. Eximo a Guayacan Preserve de responsabilidad por lesiones derivadas de mi participación.",
+       "sha256": "cd1f8771ee7739889ac05db5c02c1cf09cdfc7e9a8ce9e1f16f0b1a6b29e020c"
+      },
+      "en": {
+       "version": "1.0.0",
+       "title": "Release of liability",
+       "body": "I understand birdwatching involves walking on natural trails and accept the associated risks. I release Guayacan Preserve from liability for injuries arising from my participation.",
+       "sha256": "ee738eaf88d6df39f8ff63955298562a6bd1a7ef7075a8a0384ad47cbe1b83f9"
+      }
+     }
+    }
+   ],
+   "intake_schema": null
+  }
+ ]
+}

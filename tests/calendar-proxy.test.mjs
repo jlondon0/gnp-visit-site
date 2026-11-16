@@ -6,7 +6,8 @@
 //   node tests/calendar-proxy.test.mjs
 
 import assert from 'node:assert/strict';
-import worker, { handleCalendar, FRESH_MS, STALE_MS, REFRESH_GAP_MS, UPSTREAM, WORKER_BUILD } from '../src/worker.js';
+import worker from '../src/worker.js';
+import { handleCalendar, FRESH_MS, STALE_MS, REFRESH_GAP_MS, UPSTREAM, WORKER_BUILD } from '../src/calendar.js';
 import { readFileSync } from 'node:fs';
 
 const GOOD = JSON.stringify({ ok: true, data: { minDaysAdvance: 7, days: { '2026-10-03': { status: 'open', remaining: { AMANECER: 6 } } } } });

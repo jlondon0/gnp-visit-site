@@ -14,5 +14,24 @@
   "keep_vars": true,
   "observability": {
     "enabled": true
+  },
+  // QA: a separate Worker on the sv7n.app zone, always on the QA engine.
+  // Deployed by hand from the NAS with `--env qa` (DEPLOY.md, "QA
+  // deployment"); Workers Builds runs plain `wrangler deploy` (main) and
+  // `wrangler versions upload` (other branches), which never read this block,
+  // so production (the top level above, visit.guayacanpreserve.com) is not
+  // touched. The variable is set here, not in the dashboard: a QA deploy
+  // always points at the QA engine.
+  "env": {
+    "qa": {
+      "name": "gnp-visit-site-qa",
+      "workers_dev": false,
+      "vars": {
+        "ENGINE_BASE": "https://qa.gnp.sv7n.app"
+      },
+      "routes": [
+        { "pattern": "qa.gnp-visit.sv7n.app", "custom_domain": true }
+      ]
+    }
   }
 }

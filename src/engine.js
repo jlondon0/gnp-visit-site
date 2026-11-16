@@ -28,22 +28,28 @@ export const DEFAULT_EVENT_TYPES = Object.freeze({
   GUAYACAN24: 'guayacan24',
 });
 
-// Day status thresholds for the month calendar, as the Apps Script calendar
-// computed them (CALENDAR_LIMITED_THRESHOLD default 2). The engine has no such
-// setting; it is presentation only and never decides whether a booking fits.
-export const LIMITED_THRESHOLD = 2;
+// The month calendar's "almost full" threshold is the engine's
+// booking.low_availability_threshold, read from GET /api/catalogue with the
+// month (engine 0.7.0). Presentation only; it never decides whether a booking
+// fits. A catalogue without it blocks the month (unknown must block).
 
 export const ENGINE_TIMEOUT_MS = 20 * 1000;
 const BODY_LIMIT = 64 * 1024;
 
 // The guest routes the pages call. Method, pattern on the engine path.
+// The catalogue is public site data (texts, prices, rules, document texts);
+// the documents routes are the engine's signing link for a document left
+// unsigned at booking (sign.html), opened by the document's own token.
 export const FORWARDED = Object.freeze([
+  ['GET', /^\/api\/catalogue$/],
   ['GET', /^\/api\/availability$/],
   ['POST', /^\/api\/bookings$/],
   ['GET', /^\/api\/guest\/bookings\/[A-Za-z0-9_-]{20,200}$/],
   ['POST', /^\/api\/guest\/bookings\/[A-Za-z0-9_-]{20,200}\/cancel$/],
   ['GET', /^\/api\/guest\/bookings\/[A-Za-z0-9_-]{20,200}\/payment-options$/],
   ['POST', /^\/api\/guest\/bookings\/[A-Za-z0-9_-]{20,200}\/pay$/],
+  ['GET', /^\/api\/documents\/[A-Za-z0-9_-]{20,128}$/],
+  ['POST', /^\/api\/documents\/[A-Za-z0-9_-]{20,128}\/sign$/],
 ]);
 
 /* The engine origin from ENGINE_BASE.
@@ -158,10 +164,12 @@ export async function handleEngineApi(request, env, fetchImpl) {
   });
 }
 
-/* Links the engine builds from site.base_url when that is this site:
- * Stripe Checkout returns to /guest/bookings/<token>?payment=success|cancelled,
- * and booking.guest_link_path defaults to /bookings/<token>. Both land on the
- * existing pages. Null when the path is not one of them or the engine is off. */
+/* Engine guest links in their default shape, for a site whose
+ * site.guest_links is not set: /guest/bookings/<token>[?payment=success|cancelled]
+ * and /bookings/<token>. With site.guest_links set to this site's pages
+ * (/manage?token={token}, /pay?token={token}, /sign?token={token}) the
+ * engine links there directly and this is only a safety net. Null when the
+ * path is not one of them or the engine is off. */
 export function guestRedirect(env, url) {
   if (!engineConfig(env).on) return null;
   const m = url.pathname.match(/^\/(?:guest\/)?bookings\/([A-Za-z0-9_-]{20,200})\/?$/);
@@ -206,9 +214,20 @@ async function sessionMonth(base, slug, month, fetchImpl) {
  * dates every session comes back with remaining 0, so the day reads full.
  * minDaysAdvance is null: the engine applies its own lead time by offering no
  * slot on those days, which the page shows as unavailable. */
+export async function engineThreshold(base, fetchImpl) {
+  const signal = typeof AbortSignal !== 'undefined' && AbortSignal.timeout ? AbortSignal.timeout(ENGINE_TIMEOUT_MS) : undefined;
+  const res = await fetchImpl(base + '/api/catalogue', { headers: { accept: 'application/json' }, signal });
+  const text = await res.text();
+  let j;
+  try { j = JSON.parse(text); } catch (e) { throw new Error('engine catalogue is not JSON'); }
+  const n = j && j.ok === true && j.booking ? j.booking.low_availability_threshold : undefined;
+  if (!res.ok || !Number.isInteger(n) || n < 0) throw new Error('engine catalogue has no low_availability_threshold');
+  return n;
+}
+
 export async function engineMonth(month, base, types, fetchImpl) {
   const sessions = ['AMANECER', 'TARDE'];
-  const per = await Promise.all(sessions.map((k) => sessionMonth(base, types[k], month, fetchImpl)));
+  const [threshold, ...per] = await Promise.all([engineThreshold(base, fetchImpl), ...sessions.map((k) => sessionMonth(base, types[k], month, fetchImpl))]);
   const days = {};
   const dates = new Set();
   per.forEach((m) => Object.keys(m).forEach((d) => { if (d.slice(0, 7) === month) dates.add(d); }));
@@ -221,7 +240,7 @@ export async function engineMonth(month, base, types, fetchImpl) {
       if (r > 0) allFull = false;
       if (r < min) min = r;
     });
-    days[d] = { status: allFull ? 'full' : (min <= LIMITED_THRESHOLD ? 'limited' : 'open'), remaining };
+    days[d] = { status: allFull ? 'full' : (min <= threshold ? 'limited' : 'open'), remaining };
   }
-  return JSON.stringify({ ok: true, data: { month, minDaysAdvance: null, limitedThreshold: LIMITED_THRESHOLD, source: 'engine', days } });
+  return JSON.stringify({ ok: true, data: { month, minDaysAdvance: null, limitedThreshold: threshold, source: 'engine', days } });
 }

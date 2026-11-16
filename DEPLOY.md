@@ -26,8 +26,10 @@ Two things, from one `wrangler deploy` that Workers Builds runs on every push
 to `main`:
 
 - `public/` as Workers Static Assets (the pages, images, logos).
-- `src/worker.js` as the Worker script, bound to those assets as `ASSETS`. It
-  answers `GET /api/calendar?month=YYYY-MM` from an edge copy of the Apps
+- `src/worker.js` as the Worker entry (it exports the fetch handler and
+  nothing else; current workerd refuses an entry module that exports plain
+  values), with `src/calendar.js` and `src/engine.js`, bound to the assets as
+  `ASSETS`. It answers `GET /api/calendar?month=YYYY-MM` from an edge copy of the Apps
   Script calendar (SWL-KFMU) and hands every other path to the assets.
 
 No package.json, so Workers Builds uses its own wrangler and no install step.
@@ -48,13 +50,13 @@ Only an `ok:true` answer is stored. `x-gnp-cache: hit | stale | miss` and
 `age` on the response say which row applied; `x-gnp-worker` names the Worker
 build serving it. A stale month starts one background refresh per data centre
 per `REFRESH_GAP_MS` (30 s), not one per visitor. The Apps Script URL lives in
-`src/worker.js` as `UPSTREAM`; `index.html` still calls the same web app
+`src/calendar.js` as `UPSTREAM`; `index.html` still calls the same web app
 directly for `config`, `availability` and the booking POST.
 
 The cache is the Workers Cache API: per data centre, no binding, nothing to
 create. To make the copy global and survive evictions, create a KV namespace in
 the dashboard, add its id under `kv_namespaces` in `wrangler.jsonc` with
-binding `CALENDAR`, and switch `storeCopy` / `cache.match` in `src/worker.js`
+binding `CALENDAR`, and switch `storeCopy` / `cache.match` in `src/calendar.js`
 to `env.CALENDAR.put` / `get` with the same fetched-at metadata. A namespace
 cannot be created by a push, which is why the first version uses the Cache API.
 
@@ -65,7 +67,7 @@ or the Actions API with `ref` set to the branch holding the checkout) once the
 push to `main` has built. It runs on a GitHub-hosted runner, which reaches both
 Cloudflare and Google. It times Apps Script directly as the baseline, fails
 until the deployed `x-gnp-worker` header equals `WORKER_BUILD` in
-`src/worker.js`, then requires a well-formed month, a cached answer under
+`src/calendar.js`, then requires a well-formed month, a cached answer under
 1.5 s, and the live `calendar.html` build marker equal to the checkout's.
 
 From a machine outside the cloud lane:
@@ -96,17 +98,34 @@ keeps whatever is set there. Nothing else names the engine host.
 slugs when they differ from `{"AMANECER":"pasadia-amanecer","TARDE":"pasadia-tarde","GUAYACAN24":"guayacan24"}`.
 
 What changes in engine mode: `/config.js` tells every page to use the engine;
-index, calendar, manage and pay call the engine's guest routes (only those
-six are forwarded); pay offers Stripe Checkout only; review and admin send the
-operator to `<ENGINE_BASE>/admin/bookings` (Cloudflare Access); listado and
-partner say the feature is not available. `/guest/bookings/<token>` (the
-Stripe return) and `/bookings/<token>` redirect to pay and manage, which only
-helps once the engine's `site.base_url` is this site (in QA it is the engine
-host; see the gaps in CHANGELOG.md, 2026-11-16).
+index, calendar, manage, pay and sign call the engine through `/engine/api`
+on this Worker, which forwards only the guest routes they use (catalogue,
+availability, bookings, the guest booking routes, and a document's view and
+sign) and answers 404 to anything else. Engine 0.7.0: index reads
+`GET /api/catalogue` for plans, prices, includes and excludes, session times
+and arrival instructions, the deposit percent, the cancellation policy, the
+RNT and legal line, the lead time and the waiver text (version and SHA-256);
+the booking request signs the waiver as `signatures` (attest_adult only for
+an adult-only template; GNP's is not), and a 409 `document_changed` reloads
+the text and asks for acceptance again. "Almost full" on index and on
+`/api/calendar` is the catalogue's `booking.low_availability_threshold`.
+Pay offers Stripe Checkout only and reads `?payment=success|cancelled` on
+the return; review and admin send the operator to `<ENGINE_BASE>/admin/bookings`
+(Cloudflare Access); listado and partner say the feature is not available.
 
-Switch: set the variable, then verify. UNVERIFIED as a dashboard step (not
-run from here; the NAS holds a Cloudflare token, but this change was made on a
-branch only):
+Guest links: the engine builds them from `site.base_url` and
+`site.guest_links`, which the sv7n-pilots seed sets for the booking site
+(`scripts/seed-gnp.mjs --site-url`): manage `/manage?token={token}`, pay
+`/pay?token={token}` (Stripe returns add `&payment=success|cancelled`), sign
+`/sign?token={token}` (`public/sign.html`, for a document left unsigned at
+booking; the waiver is signed in the form). `/guest/bookings/<token>` and
+`/bookings/<token>` still redirect to pay and manage, for an engine left on
+its default links.
+
+Switch: set the variable, then verify. UNVERIFIED as a dashboard step for
+production (not run from here). Production also needs the engine's
+`site.base_url` set to `https://visit.guayacanpreserve.com` at cutover, or
+every email links to the QA site.
 
 ```bash
 curl -sS https://visit.guayacanpreserve.com/config.js          # window.GNP_ENGINE = {"enabled":true,...}
@@ -120,17 +139,32 @@ and cancellations made in the engine stay in the engine and are not in the
 Sheet. The calendar copies are keyed per backend, so no stale month from the
 other backend is served.
 
-Local run in engine mode, from the NAS. `wrangler dev` refuses `src/worker.js`
-as the entry because it exports constants (CHANGELOG.md, 2026-11-16), so it
-runs through a wrapper outside the repo:
+## QA deployment (engine mode, does not touch production)
+
+`wrangler.jsonc` `env.qa` is a separate Worker, `gnp-visit-site-qa`, on the
+custom domain `qa.gnp-visit.sv7n.app` (zone sv7n.app, same Cloudflare
+account), with `ENGINE_BASE=https://qa.gnp.sv7n.app` as a config variable.
+Workers Builds never deploys it: `main` runs plain `wrangler deploy` (the top
+level, production) and other branches run `wrangler versions upload` (a
+version of the production Worker that serves no traffic). Deploy QA from the
+NAS only, always with `--env qa`:
 
 ```bash
-mkdir -p /tmp/gnpdev && cd /tmp/gnpdev
-printf "import w from '/volume1/Projects/gnp-visit-site/src/worker.js';\nexport default w;\n" > entry.js
-printf '{ "name": "gnp-visit-site-dev", "main": "./entry.js", "compatibility_date": "2026-08-01", "assets": { "directory": "/volume1/Projects/gnp-visit-site/public/", "binding": "ASSETS" } }\n' > wrangler.jsonc
-/volume1/Projects/sv7n-core/node_modules/.bin/wrangler dev --port 8799 --ip 127.0.0.1 --var ENGINE_BASE:https://qa.gnp.sv7n.app
-# another shell:
-ENGINE_SITE=http://127.0.0.1:8799 node /volume1/Projects/gnp-visit-site/tests/engine-live.mjs --book
+bash -lc 'export PATH=/usr/local/bin:$PATH; set -a; . ~/.swl-env; set +a; cd /volume1/Projects/gnp-visit-site && /volume1/Projects/sv7n-core/node_modules/.bin/wrangler deploy --env qa'
+ENGINE_SITE=https://qa.gnp-visit.sv7n.app node tests/engine-live.mjs --book   # one test booking, cancelled
+```
+
+A plain `wrangler deploy` with no `--env` is production; current wrangler
+warns about it ("Multiple environments are defined") and that warning is
+expected on Workers Builds.
+
+Local run in engine mode, from the NAS (the entry module exports only the
+handler, so `wrangler dev` runs the repo as is):
+
+```bash
+cd /volume1/Projects/gnp-visit-site
+/volume1/Projects/sv7n-core/node_modules/.bin/wrangler dev --env qa --port 8799 --ip 127.0.0.1
+ENGINE_SITE=http://127.0.0.1:8799 node tests/engine-live.mjs
 ```
 
 ## Rolling back
