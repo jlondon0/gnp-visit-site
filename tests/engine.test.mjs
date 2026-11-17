@@ -527,6 +527,43 @@ test('operator pages hand over to the engine admin; deferred pages say so in bot
   assert.match(read('partner.html'), /if \(!\(window\.GnpEngine && window\.GnpEngine\.takeOver\('unavailable', document, window\.location\)\)\) \{ applyLang\(\); load\(\); \}/);
 });
 
+const CREDIT = 'Developed in the US by sketchwithlight LLC';
+const GUEST_PAGES = ['index.html', 'calendar.html', 'manage.html', 'pay.html', 'sign.html', 'listado.html', 'partner.html', 'review.html', 'admin.html'];
+
+test('every guest page shows the Sketchwithlight LLC credit once, outside the box engine mode replaces', () => {
+  for (const f of GUEST_PAGES) {
+    const html = read(f);
+    const m = html.match(/<div class="swl-credit"[^>]*>([^<]*)<\/div>/g) || [];
+    assert.equal(m.length, 1, `${f}: one credit`);
+    assert.match(m[0], new RegExp('>' + CREDIT + '<'), f);
+    // The credit follows the page's last script, after the .wrap box closes,
+    // so takeOver (which replaces .wrap) leaves it in place.
+    const at = html.indexOf('class="swl-credit"');
+    assert.ok(html.indexOf('class="wrap"') < at, `${f}: after the wrap opens`);
+    assert.ok(!/<script>/.test(html.slice(at)) || /GNP-CHAT-WIDGET/.test(html.slice(at)), `${f}: after the page script`);
+  }
+});
+
+test('takeOver keeps the credit: left alone outside the box, carried by the notice otherwise', () => {
+  const E = client(ON);
+  const mk = (creditOutside, creditInside) => {
+    const wrap = { innerHTML: 'old', querySelector: (sel) => (sel === '.swl-credit' ? (creditInside ? {} : null) : null) };
+    const doc = { querySelector: (sel) => (sel === '.wrap' ? wrap : sel === '.swl-credit' ? ((creditOutside || creditInside) ? {} : null) : null), querySelectorAll: () => [], body: {} };
+    return { wrap, doc };
+  };
+  const count = (h) => (h.match(/class="swl-credit"/g) || []).length;
+  let t = mk(true, false);
+  E.takeOver('unavailable', t.doc, {});
+  assert.equal(count(t.wrap.innerHTML), 0, 'the page credit outside the box stays; no second one');
+  t = mk(false, false);
+  E.takeOver('unavailable', t.doc, {});
+  assert.equal(count(t.wrap.innerHTML), 1, 'a page with no credit gets one');
+  assert.match(t.wrap.innerHTML, new RegExp(CREDIT));
+  t = mk(false, true);
+  E.takeOver('admin', t.doc, { replace() {} });
+  assert.equal(count(t.wrap.innerHTML), 1, 'a credit inside the replaced box is put back');
+});
+
 test('index and manage send their engine calls through GnpEngine, never Apps Script, in engine mode', () => {
   const index = read('index.html');
   assert.match(index, /if \(ENGINE\) return submitEngine\(/);
@@ -587,7 +624,9 @@ test('client: almost full, the cancellation policy and the legal line', () => {
   assert.equal(E.policyLines(null, 'ES').length, 0);
   const l = E.legalLines(E.catalogueConfig(CAT).site, 'ES');
   assert.equal(l.rnt, 'Registro Nacional de Turismo: RNT 273376');
-  assert.equal(l.legal, 'GUAYACAN NATURAL PRESERVE · NIT 7542144-3');
+  assert.equal(l.legal, 'Guayacan Natural Preserve · NIT 7542144-3', 'the public name (site.name), not the legal name');
+  assert.doesNotMatch(l.legal, /GUAYACAN NATURAL PRESERVE/);
+  assert.equal(E.legalLines({ name: 'N', legalName: 'Legal c/o Someone' }, 'ES').legal, 'N', 'the legal name is never shown');
   assert.equal(E.legalLines({ registrationId: 'RNT 1' }, 'EN').rnt, 'National Tourism Registry: RNT 1');
 });
 
@@ -675,7 +714,7 @@ test('index in engine mode: catalogue texts on the page, the waiver signed with 
   assert.equal(catalogueReads, 1);
   assert.equal(els['t-waiverText'].textContent, CAT.event_types[0].documents[0].templates.es.body, 'the waiver shown is the engine template');
   assert.equal(els.rntFoot.textContent, 'Registro Nacional de Turismo: RNT 273376');
-  assert.equal(els.legalFoot.textContent, 'GUAYACAN NATURAL PRESERVE · NIT 7542144-3');
+  assert.equal(els.legalFoot.textContent, 'Guayacan Natural Preserve · NIT 7542144-3');
   sandbox.selectPlan('PASADIA');
   sandbox.setSub('TARDE');
   sandbox.selectPlan('PASADIA'); // re-render with the plan chosen

@@ -264,13 +264,15 @@
     return out;
   }
 
-  /* The registration and legal line for the footer, from the catalogue's
-   * site block: 'RNT 273376' and 'legal name · NIT x'. Empty parts are left out. */
+  /* The registration and name line for the footer, from the catalogue's
+   * site block: 'RNT 273376' and 'site name · NIT x'. The public name
+   * (site.name, "Guayacan Natural Preserve"), never the legal name: decided
+   * by Jorge 2026-11-17. Empty parts are left out. */
   function legalLines(site, L) {
     if (!site) return { rnt: '', legal: '' };
     var en = lang(L) === 'en';
     var rnt = site.registrationId ? (en ? 'National Tourism Registry: ' : 'Registro Nacional de Turismo: ') + site.registrationId : '';
-    var legal = [site.legalName, site.taxId ? 'NIT ' + site.taxId : ''].filter(Boolean).join(' · ');
+    var legal = [site.name, site.taxId ? 'NIT ' + site.taxId : ''].filter(Boolean).join(' · ');
     return { rnt: rnt, legal: legal };
   }
 
@@ -557,11 +559,18 @@
   /* In engine mode: replace the page's container with the notice and, for the
    * operator pages, send the browser to the engine admin. Returns true when the
    * page must not start its Apps Script flow. */
+  /* The Sketchwithlight LLC credit every guest page shows, in both backends. */
+  var CREDIT_HTML = '<div class="swl-credit" style="font-size:10px;text-align:center;opacity:.55;padding:14px 12px 18px;letter-spacing:.3px">Developed in the US by sketchwithlight LLC</div>';
+
   function takeOver(kind, doc, loc, c) {
     if (!enabled(c)) return false;
     var box = doc.querySelector('.wrap') || doc.body;
     var brand = box.querySelector ? box.querySelector('.brand') : null;
-    box.innerHTML = (brand ? brand.outerHTML : '') + noticeHtml(kind, c);
+    /* The credit stays: when it is not outside the replaced box, the notice carries it. */
+    var credit = doc.querySelector('.swl-credit');
+    var inside = credit && box.querySelector ? box.querySelector('.swl-credit') : null;
+    var keep = !credit || !!inside || box === doc.body;
+    box.innerHTML = (brand ? brand.outerHTML : '') + noticeHtml(kind, c) + (keep ? CREDIT_HTML : '');
     var extra = doc.querySelectorAll ? doc.querySelectorAll('.progress, .sendwrap, #cam') : [];
     for (var i = 0; i < extra.length; i++) extra[i].style.display = 'none';
     var url = kind === 'admin' ? adminUrl(c) : null;
@@ -588,7 +597,7 @@
     availabilityUrl: availabilityUrl, slotOn: slotOn, clock: clock, planCatalog: planCatalog, receipt: receipt,
     splitName: splitName, bookingRequest: bookingRequest, bookingResult: bookingResult, guestUrl: guestUrl,
     cancelRequest: cancelRequest, refundLine: refundLine, bookingSummary: bookingSummary, payState: payState,
-    checkoutUrl: checkoutUrl, errorText: errorText, bookingsUrl: bookingsUrl, adminUrl: adminUrl, noticeHtml: noticeHtml, takeOver: takeOver,
+    checkoutUrl: checkoutUrl, errorText: errorText, bookingsUrl: bookingsUrl, adminUrl: adminUrl, noticeHtml: noticeHtml, takeOver: takeOver, CREDIT_HTML: CREDIT_HTML,
     text: text, getJson: getJson, postJson: postJson,
   };
 })(typeof window !== 'undefined' ? window : globalThis);
