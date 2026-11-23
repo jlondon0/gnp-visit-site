@@ -54,6 +54,18 @@ dim(){ python3 -c "import struct,sys;d=open(sys.argv[1],'rb').read(24);print(*st
 grep -q '"directory": *"./public/"' wrangler.jsonc && ok || bad "wrangler.jsonc assets directory is not ./public/"
 git ls-files | grep -qE '(^|/)@eaDir/|\.DS_Store$' && bad "Synology metadata is tracked in git" || ok
 
+# 5b. The "Report an issue" link on every page goes to the intake app on its
+#     sv7n.app host with this product's from= value. The old host only
+#     301-redirects there; a link left on it, or a lost from=, files the
+#     report against the wrong product.
+for page in public/*.html; do
+  grep -q 'data-swl-report' "$page" || continue
+  grep -qE '<a data-swl-report href="https://intake\.sv7n\.app/\?from=gnp-res"' "$page" && ok \
+    || bad "$page: Report an issue does not link to https://intake.sv7n.app/?from=gnp-res"
+  grep -q 'intake\.sketchwithlight\.com' "$page" && bad "$page still links to intake.sketchwithlight.com" || ok
+done
+[ "$(grep -l 'data-swl-report' public/*.html | wc -l)" -ge 8 ] && ok || bad "fewer than 8 pages carry the Report an issue link"
+
 # 6. Availability is served from this Worker's edge copy (SWL-KFMU), never
 #    fetched by the calendar page straight from Apps Script, and the Worker
 #    behind it keeps its contract: fresh hits skip the backend, stale hits are
