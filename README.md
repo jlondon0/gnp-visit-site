@@ -17,7 +17,7 @@ WRANGLER_BIN=/path/to/wrangler ./tests/run.sh   # also dry-runs the deploy confi
 ```
 
 Exits non-zero on any failure; prints `PASSED: n, FAILED: m` and one verdict
-line. Baseline on 2026-09-13: 61 passed, 0 failed (62 with a wrangler binary).
+line. Baseline on 2026-11-23: 80 passed, 0 failed (81 with a wrangler binary).
 
 `.github/workflows/live-check.yml` measures the running site and the Apps
 Script backend from a GitHub runner; DEPLOY.md says when to run it.
@@ -29,7 +29,7 @@ Push to `main`. Workers Builds runs `wrangler deploy`. See DEPLOY.md.
 ## Versions
 
 Pages carry their own build marker (`GNP-BUILD` comment and a `*_BUILD`
-constant): index `v2.32.0`, calendar `v2.28.2b`. The Worker reports its own,
+constant): index `v2.32.0`, calendar `v2.28.3`. The Worker reports its own,
 `WORKER_BUILD` in `src/worker.js`, as `x-gnp-worker` on `/api/calendar`. The index page compares its
 marker against the backend's reported version in the console. Number bump for
 a change request, alpha suffix for an issue fix.

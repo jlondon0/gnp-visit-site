@@ -3,6 +3,20 @@
 Newest first. Each entry states the symptom, the cause and the fix, per
 `SWL_Engineering_Standard.md`.
 
+## 2026-11-23 - Report an issue links to intake.sv7n.app
+- Symptom: every page's "Report an issue" link pointed at
+  `intake.sketchwithlight.com`, which now only 301-redirects to the intake
+  app's home on sv7n.app. It worked, one hop late.
+- Cause: the intake app moved to `intake.sv7n.app` (sv7n.app strategy); the
+  links were written before the move.
+- Fix: the eight pages link to `https://intake.sv7n.app/?from=gnp-res`, path
+  and product value unchanged. Build markers: calendar v2.28.3, listado
+  v1.0.1, manage v2.28.1, review v2.28.1. index, pay and admin keep their
+  markers, which by design equal the backend version they are matched against.
+- Tests: `scripts/run-tests.sh` 5b asserts each page's link host and
+  `from=gnp-res` and that no page names the old host; pointing one page back at
+  the old host, or changing one `from=`, turned the suite red.
+
 ## 2026-11-13 - Pay and admin pages for backend v2.39.0: no mock payment, no secrets
 - Pay page (`pay` v2.39.0): whenever the manual lane was not offered the page
   showed "Pagar con tarjeta", which called `confirmPaymentMock` and confirmed the
